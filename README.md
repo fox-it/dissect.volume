@@ -3,6 +3,16 @@
 A Dissect module implementing a parser for different disk volume and partition systems, for example LVM2, GPT and MBR.
 For more information, please see [the documentation](https://dissect.readthedocs.io/en/latest/projects/dissect.volume).
 
+## Installation
+
+`dissect.volume` is available on [PyPI](https://pypi.org/project/dissect.volume/).
+
+```bash
+pip install dissect.volume
+```
+
+This module is also automatically installed if you install the `dissect` package.
+
 ## Build and test instructions
 
 This project uses `tox` to build source and wheel distributions. Run the following command from the root folder to build
