@@ -1,8 +1,9 @@
-from dissect import cstruct
+from typing import BinaryIO, Iterator, Optional
+
+from dissect.cstruct import Instance, cstruct
 
 from dissect.volume.disk.partition import Partition
 from dissect.volume.exceptions import DiskError
-
 
 mbr_def = """
 typedef struct part_s {
@@ -25,14 +26,14 @@ typedef struct mbr_s {
 } mbr;
 """
 
-c_mbr = cstruct.cstruct()
+c_mbr = cstruct()
 c_mbr.load(mbr_def)
 
 
 class MBR:
-    """Master Boot Record"""
+    """Master Boot Record."""
 
-    def __init__(self, fh, sector_size=512):
+    def __init__(self, fh: BinaryIO, sector_size: int = 512):
         self.fh = fh
         self.sector_size = sector_size
         self.offset = fh.tell()
@@ -46,9 +47,11 @@ class MBR:
         if any([v in sig for v in [b"MSDOS", b"MSWIN", b"NTFS", b"FAT", b"EXFAT", b"-FVE-FS-"]]):
             raise DiskError("Sector is a filesystem VBR, not a MBR")
 
-        self.partitions = [part for part in self._partitions(self.mbr, self.offset)]
+        self.partitions: list[Partition] = list(self._partitions(self.mbr, self.offset))
 
-    def _partitions(self, mbr, offset, num_start=0, ebr_offset=None):
+    def _partitions(
+        self, mbr: Instance, offset: int, num_start: int = 0, ebr_offset: Optional[int] = None
+    ) -> Iterator[Partition]:
         for num, partition in enumerate(mbr.part):
             if partition.type == 0x00:
                 continue

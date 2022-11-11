@@ -1,9 +1,12 @@
-from dissect.volume.exceptions import DiskError
+from typing import BinaryIO, Optional
+
+from dissect.volume.disk.partition import Partition
 from dissect.volume.disk.schemes import APM, GPT, MBR
+from dissect.volume.exceptions import DiskError
 
 
 class Disk:
-    def __init__(self, fh, sector_size=512):
+    def __init__(self, fh: BinaryIO, sector_size: int = 512):
         self.fh = fh
         self.sector_size = sector_size
         self.scheme = None
@@ -24,12 +27,12 @@ class Disk:
         if not self.scheme:
             raise DiskError("Unable to detect a valid partition scheme:\n- {}".format("\n- ".join(errors)))
 
-        self.partitions = self.scheme.partitions
+        self.partitions: list[Partition] = self.scheme.partitions
         if isinstance(self.scheme, MBR) and any([p.type == 0xEE for p in self.partitions]):
             raise DiskError("Found GPT type partition, but MBR scheme detected. Maybe 4K sector size.")
 
     @property
-    def serial(self):
+    def serial(self) -> Optional[int]:
         if isinstance(self.scheme, MBR):
             return self.scheme.mbr.vol_no
         return None
