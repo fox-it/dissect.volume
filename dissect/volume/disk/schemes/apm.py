@@ -1,8 +1,8 @@
-from dissect import cstruct
+from typing import BinaryIO, Iterator
 
+from dissect import cstruct
 from dissect.volume.disk.partition import Partition
 from dissect.volume.exceptions import DiskError
-
 
 apm_def = """
 struct partition_entry {
@@ -34,9 +34,9 @@ c_apm.endian = ">"
 
 
 class APM:
-    """Apple Partition Map"""
+    """Apple Partition Map."""
 
-    def __init__(self, fh, sector_size=512):
+    def __init__(self, fh: BinaryIO, sector_size: int = 512):
         self.fh = fh
         self.sector_size = sector_size
         self.apm = c_apm.partition_entry(fh)
@@ -49,9 +49,11 @@ class APM:
         if self.apm.signature != b"PM":
             raise DiskError(f"Invalid APM signature, expected 'PM', got {self.apm.signature!r}.")
 
-        self.partitions = [part for part in self._partitions()]
+        self._partitions_offset = fh.tell()
+        self.partitions: list[Partition] = list(self._partitions())
 
-    def _partitions(self):
+    def _partitions(self) -> Iterator[Partition]:
+        self.fh.seek(self._partitions_offset)
         for i in range(self.apm.partition_count):
             if i == 0:
                 p = self.apm

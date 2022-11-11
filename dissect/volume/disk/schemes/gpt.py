@@ -1,9 +1,9 @@
+from typing import BinaryIO, Iterator
+
 from dissect import cstruct
-
-from dissect.volume.disk.schemes.mbr import MBR
 from dissect.volume.disk.partition import Partition
+from dissect.volume.disk.schemes.mbr import MBR
 from dissect.volume.exceptions import DiskError
-
 
 gpt_def = """
 // http://en.wikipedia.org/wiki/GUID_Partition_Table
@@ -47,9 +47,9 @@ c_gpt.load(gpt_def)
 
 
 class GPT:
-    """GUID Partition Table"""
+    """GUID Partition Table."""
 
-    def __init__(self, fh, sector_size=512):
+    def __init__(self, fh: BinaryIO, sector_size: int = 512):
         self.fh = fh
         self.sector_size = sector_size
 
@@ -65,9 +65,9 @@ class GPT:
         if self.gpt.signature != b"EFI PART":
             raise DiskError(f"Invalid GPT signature, expected 'EFI PART', got {self.gpt.signature!r}.")
 
-        self.partitions = [part for part in self._partitions()]
+        self.partitions: list[Partition] = list(self._partitions())
 
-    def _partitions(self):
+    def _partitions(self) -> Iterator[Partition]:
         # First iterate MBR partitions
         # When we find the GPT partition, iterate GPT partitions
         # This should support Hybrid GPT

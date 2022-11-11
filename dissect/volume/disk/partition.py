@@ -1,7 +1,8 @@
+from typing import Any, BinaryIO, Optional, Union
 from uuid import UUID
 
+from dissect.cstruct import Instance
 from dissect.util.stream import RangeStream
-
 
 PARTITION_TYPES = {
     0x00: "Empty",
@@ -96,6 +97,8 @@ PARTITION_TYPES = {
     UUID("516E7CB6-6ECF-11D6-8FF8-00022D09712B"): "FreeBSD Unix File System (UFS)",
     UUID("516E7CB8-6ECF-11D6-8FF8-00022D09712B"): "FreeBSD Vinum volume manager",
     UUID("516E7CBA-6ECF-11D6-8FF8-00022D09712B"): "FreeBSD ZFS",
+    UUID("9D087404-1CA5-11DC-8817-01301BB8A9F5"): "DragonFlyBSD disklabel32",
+    UUID("3D48CE54-1D16-11DC-8696-01301BB8A9F5"): "DragonFlyBSD disklabel64",
     UUID("48465300-0000-11AA-AA11-00306543ECAC"): "Apple Hierarchical File System Plus (HFS+)",
     UUID("55465300-0000-11AA-AA11-00306543ECAC"): "Apple UFS",
     UUID("52414944-0000-11AA-AA11-00306543ECAC"): "Apple RAID",
@@ -171,7 +174,19 @@ PARTITION_TYPES = {
 
 
 class Partition:
-    def __init__(self, disk, number, offset, size, vtype, name, flags=None, guid=None, raw=None):
+    def __init__(
+        self,
+        disk: Any,
+        number: int,
+        offset: int,
+        size: int,
+        vtype: Union[int, UUID],
+        name: str,
+        flags: Optional[int] = None,
+        guid: Optional[UUID] = None,
+        vtype_str: Optional[str] = None,
+        raw: Instance = None,
+    ):
         self.disk = disk
         self.number = number
         self.offset = offset
@@ -180,21 +195,26 @@ class Partition:
         self.name = name
         self.flags = flags
         self.guid = guid
+        self.type_str = vtype_str
         self.raw = raw
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        vtype_str = self.type_str
+
         if isinstance(self.type, int):
             vtype = hex(self.type)
             vtype_key = self.type
-        else:
+        elif isinstance(self.type, bytes):
             vtype = UUID(bytes_le=self.type)
             vtype_key = vtype
+        elif isinstance(self.type, str):
+            vtype_str = self.type
 
-        vtype_str = f"{vtype} ({PARTITION_TYPES.get(vtype_key, 'Unknown')})"
+        vtype_str = vtype_str or f"{vtype} ({PARTITION_TYPES.get(vtype_key, 'Unknown')})"
         return (
             f"<Partition number={self.number} offset=0x{self.offset:x} "
             f"size=0x{self.size:x} type={vtype_str} name={self.name!r}>"
         )
 
-    def open(self):
+    def open(self) -> BinaryIO:
         return RangeStream(self.disk.fh, offset=self.offset, size=self.size)
