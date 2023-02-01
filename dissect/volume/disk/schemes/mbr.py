@@ -58,7 +58,7 @@ class MBR:
 
             part_offset = offset + partition.sector_ofs * self.sector_size
 
-            if partition.type == 0x05:  # Extended
+            if partition.type in (0x05, 0x0F, 0x85):  # Extended
                 if not ebr_offset:
                     ebr_offset = part_offset
                 else:
