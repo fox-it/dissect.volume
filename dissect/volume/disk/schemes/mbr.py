@@ -67,7 +67,7 @@ class MBR:
 
                 self.fh.seek(part_offset)
                 e_mbr = c_mbr.mbr_s(self.fh)
-                yield from self._partitions(e_mbr, part_offset, num, ebr_offset=ebr_offset)
+                yield from self._partitions(e_mbr, part_offset, num_start + num, ebr_offset=ebr_offset)
 
                 continue
 
