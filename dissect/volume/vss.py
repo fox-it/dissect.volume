@@ -1,8 +1,8 @@
 # This file is still a WIP
 
+import logging
 import os
 import uuid
-import logging
 from collections import defaultdict
 
 from dissect import cstruct

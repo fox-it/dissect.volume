@@ -1,11 +1,10 @@
-import os
 import logging
+import os
 from bisect import bisect_right
 
 from dissect.util.stream import AlignedStream
 
-from dissect.volume.lvm.physical import PhysicalVolume, Stripe, Segment
-
+from dissect.volume.lvm.physical import PhysicalVolume, Segment, Stripe
 
 log = logging.getLogger(__name__)
 log.setLevel(os.getenv("DISSECT_LOG_LVM", "CRITICAL"))

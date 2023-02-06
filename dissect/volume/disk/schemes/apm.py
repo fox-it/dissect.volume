@@ -1,6 +1,7 @@
 from typing import BinaryIO, Iterator
 
 from dissect import cstruct
+
 from dissect.volume.disk.partition import Partition
 from dissect.volume.exceptions import DiskError
 

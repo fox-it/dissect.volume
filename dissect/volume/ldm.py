@@ -2,8 +2,8 @@
 #
 # This file is still a WIP
 
-import os
 import logging
+import os
 
 from dissect import cstruct
 
