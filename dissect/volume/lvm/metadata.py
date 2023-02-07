@@ -1,5 +1,5 @@
-import re
 import ast
+import re
 from collections import OrderedDict
 
 from dissect.volume.exceptions import LVM2Error

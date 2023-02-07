@@ -1,4 +1,5 @@
 import io
+
 import pytest
 
 from dissect.volume.exceptions import LVM2Error

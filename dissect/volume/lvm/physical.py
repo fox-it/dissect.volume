@@ -1,9 +1,9 @@
 import logging
 import os
-
 from bisect import bisect_right
 
 from dissect import cstruct
+
 from dissect.volume.exceptions import LVM2Error
 from dissect.volume.lvm.metadata import Metadata
 

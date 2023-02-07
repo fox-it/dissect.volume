@@ -3,6 +3,7 @@ from typing import BinaryIO, Iterator
 from uuid import UUID
 
 from dissect import cstruct
+
 from dissect.volume.disk.partition import Partition
 from dissect.volume.exceptions import DiskError
 
