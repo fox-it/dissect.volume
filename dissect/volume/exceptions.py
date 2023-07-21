@@ -12,3 +12,7 @@ class DiskError(Error):
 
 class DMError(Error):
     pass
+
+
+class MDError(Error):
+    pass
