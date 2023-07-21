@@ -1,4 +1,5 @@
 import io
+from typing import BinaryIO
 
 import pytest
 
@@ -6,7 +7,7 @@ from dissect.volume.exceptions import LVM2Error
 from dissect.volume.lvm import LVM2
 
 
-def test_lvm(lvm):
+def test_lvm(lvm: BinaryIO) -> None:
     lvm = LVM2(lvm)
 
     vg = lvm.vg
@@ -29,7 +30,7 @@ def test_lvm(lvm):
     assert lv.read(1024) == b"\x00" * 1024
 
 
-def test_lvm_invalid():
+def test_lvm_invalid() -> None:
     buf = io.BytesIO(4096 * b"\x00")
 
     with pytest.raises(LVM2Error):
