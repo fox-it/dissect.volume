@@ -10,16 +10,24 @@ from uuid import UUID
 from dissect.util import ts
 from dissect.util.stream import RangeStream
 
-from dissect.volume.md.c_md import c_md
+from dissect.volume.md.c_md import SECTOR_SIZE, c_md
 from dissect.volume.md.stream import (
+    LinearStream,
     RAID0Stream,
     RAID10Stream,
     RAID456Stream,
-    create_linear_stream,
 )
 
 
 class MD:
+    """Read an MD RAID set of one or multiple devices/file-like objects.
+
+    Use this class to read from a RAID set.
+
+    Args:
+        fh: A single file-like object or :class:`Device`, or a list of multiple belonging to the same RAID set.
+    """
+
     def __init__(self, fh: Union[list[Union[BinaryIO, Device]], Union[BinaryIO, Device]]):
         self.fh = [fh] if not isinstance(fh, list) else fh
         if not fh:
@@ -43,8 +51,9 @@ class MD:
         self.size = self.open().size
 
     def open(self) -> BinaryIO:
+        """Return a file-like object of the RAID volume in this set."""
         if self.level == c_md.LEVEL_LINEAR:
-            return create_linear_stream(self)
+            return LinearStream(self)
         elif self.level == 0:
             return RAID0Stream(self)
         elif self.level == 1:
@@ -57,6 +66,14 @@ class MD:
 
 
 class Device:
+    """Parse metadata from an MD device.
+
+    Supports 0.90 and 1.x metadata.
+
+    Args:
+        fh: The file-like object to read metadata from.
+    """
+
     def __init__(self, fh: BinaryIO):
         self.fh = fh
 
@@ -64,7 +81,7 @@ class Device:
         if sb_offset is None:
             raise ValueError("File-like object is not an MD device")
 
-        fh.seek(sb_offset * 512)
+        fh.seek(sb_offset * SECTOR_SIZE)
         if sb_major == 1:
             self.sb = c_md.mdp_superblock_1(fh)
         elif sb_major == 0:
@@ -110,10 +127,11 @@ class Device:
         self.sectors = self.data_size
 
     def open(self) -> BinaryIO:
+        """Return a file-like object of the data section of this device."""
         return RangeStream(
             self.fh,
-            self.data_offset * 512,
-            self.data_size * 512,
+            self.data_offset * SECTOR_SIZE,
+            self.data_size * SECTOR_SIZE,
             align=self.chunk_size or io.DEFAULT_BUFFER_SIZE,
         )
 
@@ -126,7 +144,7 @@ def find_super_block(fh: BinaryIO) -> tuple[int, int, int]:
         size = fh.size
     else:
         size = fh.seek(0, io.SEEK_END)
-    size //= 512
+    size //= SECTOR_SIZE
 
     possible_offsets = [
         # 0.90.0
@@ -141,7 +159,7 @@ def find_super_block(fh: BinaryIO) -> tuple[int, int, int]:
     ]
 
     for offset in possible_offsets:
-        fh.seek(offset * 512)
+        fh.seek(offset * SECTOR_SIZE)
 
         peek = fh.read(12)
         if len(peek) != 12:
@@ -155,6 +173,10 @@ def find_super_block(fh: BinaryIO) -> tuple[int, int, int]:
 
 
 def _parse_ts(timestamp: int) -> datetime.datetime:
+    """Utility method for parsing MD timestamps.
+
+    Lower 40 bits are seconds, upper 24 are microseconds.
+    """
     seconds = timestamp & 0xFFFFFFFFFF
     micro = timestamp >> 40
     return ts.from_unix_us((seconds * 1000000) + micro)

@@ -1,33 +1,32 @@
 from __future__ import annotations
 
-import io
 import operator
-from typing import TYPE_CHECKING, BinaryIO, NamedTuple, Optional
+from typing import TYPE_CHECKING, NamedTuple, Optional
 
 from dissect.util.stream import AlignedStream, MappingStream
 
 from dissect.volume.exceptions import MDError
-from dissect.volume.md.c_md import c_md
+from dissect.volume.md.c_md import SECTOR_SIZE, c_md
 
 if TYPE_CHECKING:
     from dissect.volume.md.md import MD, Device
 
 
-def create_linear_stream(md: MD) -> BinaryIO:
-    stream = MappingStream(align=md.chunk_size or io.DEFAULT_BUFFER_SIZE)
+class LinearStream(MappingStream):
+    """Implements a stream on a linear RAID set."""
 
-    offset = 0
-    for device in md.devices:
-        # Ignore special device roles for now
-        if device.raid_disk is None:
-            continue
+    def __init__(self, md: MD):
+        super().__init__()
 
-        device_size = device.data_size * 512
-        stream.add(offset, device_size, device.open(), 0)
-        offset += device_size
+        offset = 0
+        for device in md.devices:
+            # Ignore special device roles for now
+            if device.raid_disk is None:
+                continue
 
-    stream.size = offset
-    return stream
+            device_size = device.data_size * SECTOR_SIZE
+            self.add(offset, device_size, device.open(), 0)
+            offset += device_size
 
 
 class Zone(NamedTuple):
@@ -37,12 +36,17 @@ class Zone(NamedTuple):
 
 
 class RAID0Stream(AlignedStream):
+    """Implements a stream on a RAID0 set."""
+
     def __init__(self, md: MD):
         self.md = md
         self.devices = {dev.raid_disk: dev for dev in self.md.devices if dev.raid_disk is not None}
         if len(self.devices) != md.raid_disks:
             raise MDError(f"Missing disks in RAID0 set {self.md.uuid} ({self.md.name})")
 
+        # Determine how many strip zones we need to construct
+        # If a RAID0 set consists of devices with different sizes, additional strip zones
+        # may exist on the larger devices but not on the smaller ones
         devices = sorted(self.devices.values(), key=operator.attrgetter("raid_disk"))
         num_strip_zones = 0
         for dev1 in devices:
@@ -56,6 +60,7 @@ class RAID0Stream(AlignedStream):
             if not has_same_sectors:
                 num_strip_zones += 1
 
+        # Determine the smallest device and calculate the overal volume size at the same time
         size = 0
         smallest = None
         for dev in devices:
@@ -64,9 +69,8 @@ class RAID0Stream(AlignedStream):
 
             size += dev.sectors & ~(self.md.chunk_sectors - 1)
 
-        zones = {
-            0: Zone(smallest.sectors * len(devices), 0, devices),
-        }
+        # Construct the strip zones
+        zones = [Zone(smallest.sectors * len(devices), 0, devices)]
 
         cur_zone_end = zones[0].zone_end
         for i in range(1, num_strip_zones):
@@ -87,14 +91,14 @@ class RAID0Stream(AlignedStream):
 
             cur_zone_end += sectors
 
-            zones[i] = Zone(cur_zone_end, dev_start, zone_devices)
+            zones.append(Zone(cur_zone_end, dev_start, zone_devices))
 
         self.zones = zones
 
-        super().__init__(size * 512)
+        super().__init__(size * SECTOR_SIZE)
 
     def _find_zone(self, offset: int) -> Optional[tuple[Zone, int]]:
-        for i, zone in self.zones.items():
+        for i, zone in enumerate(self.zones):
             if offset < zone.zone_end:
                 if i:
                     offset = offset - self.zones[i - 1].zone_end
@@ -104,8 +108,8 @@ class RAID0Stream(AlignedStream):
         r = []
 
         chunk_sectors = self.md.chunk_sectors
-        offset_sector = offset // 512
-        num_sectors = (length + 512 - 1) // 512
+        offset_sector = offset // SECTOR_SIZE
+        num_sectors = (length + SECTOR_SIZE - 1) // SECTOR_SIZE
         while length:
             zone, sector_in_zone = self._find_zone(offset_sector)
 
@@ -121,10 +125,10 @@ class RAID0Stream(AlignedStream):
 
             chunk_remaining = chunk_sectors - sector_in_chunk
             read_sectors = min(num_sectors, chunk_remaining)
-            read_length = min(read_sectors * 512, length)
+            read_length = min(read_sectors * SECTOR_SIZE, length)
 
             sector_on_disk = device.data_offset + sector_in_device
-            device.fh.seek(sector_on_disk * 512)
+            device.fh.seek(sector_on_disk * SECTOR_SIZE)
             r.append(device.fh.read(read_length))
 
             num_sectors -= read_sectors
@@ -135,6 +139,8 @@ class RAID0Stream(AlignedStream):
 
 
 class RAID456Stream(AlignedStream):
+    """Implements a stream on a RAID5 set."""
+
     def __init__(self, md: MD):
         self.md = md
         self.max_degraded = 2 if self.md.level == 6 else 1
@@ -145,9 +151,11 @@ class RAID456Stream(AlignedStream):
         if len(self.devices) < md.raid_disks - self.max_degraded:
             raise MDError(f"Missing disks in RAID{self.level} set {self.md.uuid} ({self.md.name})")
 
-        super().__init__(self.md.sb.size * 512, self.md.chunk_size)
+        super().__init__(self.md.sb.size * SECTOR_SIZE, self.md.chunk_size)
 
     def _get_stripe_read_info(self, sector: int) -> tuple[int, int, int, int, Optional[int]]:
+        """Calculate the stripe, offset in the stripe, data disk, parity disk and "Q" parity disk for a given sector."""
+
         # Reference: raid5_compute_sector
         sectors_per_chunk = self.md.chunk_sectors
         raid_disks = self.md.raid_disks
@@ -306,8 +314,8 @@ class RAID456Stream(AlignedStream):
         r = []
 
         chunk_sectors = self.md.chunk_sectors
-        offset_sector = offset // 512
-        num_sectors = (length + 512 - 1) // 512
+        offset_sector = offset // SECTOR_SIZE
+        num_sectors = (length + SECTOR_SIZE - 1) // SECTOR_SIZE
 
         while length:
             stripe, sector_in_chunk, dd_idx, pd_idx, qd_idx = self._get_stripe_read_info(offset_sector)
@@ -316,10 +324,10 @@ class RAID456Stream(AlignedStream):
 
             chunk_remaining = chunk_sectors - sector_in_chunk
             read_sectors = min(num_sectors, chunk_remaining)
-            read_length = min(read_sectors * 512, length)
+            read_length = min(read_sectors * SECTOR_SIZE, length)
 
             sector_on_disk = dd_dev.data_offset + sector_in_device
-            dd_dev.fh.seek(sector_on_disk * 512)
+            dd_dev.fh.seek(sector_on_disk * SECTOR_SIZE)
             r.append(dd_dev.fh.read(length))
 
             num_sectors -= read_sectors
@@ -330,6 +338,8 @@ class RAID456Stream(AlignedStream):
 
 
 class RAID10Stream(AlignedStream):
+    """Implements a stream on a RAID10 set."""
+
     def __init__(self, md: MD):
         self.md = md
         self.raid_disks = self.md.raid_disks
@@ -344,11 +354,16 @@ class RAID10Stream(AlignedStream):
 
         use_far_sets = layout >> 17
         if use_far_sets == 0:
+            # Original layout
             self.far_set_size = self.raid_disks
         elif use_far_sets == 1:
+            # "Improved" but bugged layout
             self.far_set_size = self.raid_disks // self.far_copies
         elif use_far_sets == 2:
+            # "Improved" and fixed layout
             self.far_set_size = self.far_copies * self.near_copies
+        else:
+            raise ValueError("Invalid RAID10 layout: {layout:#x}")
 
         self.last_far_set_start = ((self.raid_disks / self.far_set_size) - 1) * self.far_set_size
         self.last_far_set_size = self.far_set_size + (self.raid_disks % self.far_set_size)
@@ -356,14 +371,14 @@ class RAID10Stream(AlignedStream):
         self.chunk_mask = self.md.chunk_sectors - 1
         self.chunk_shift = ffz(~self.md.chunk_sectors)
 
-        super().__init__(self.md.sb.size * 512, self.md.chunk_size)
+        super().__init__(self.md.sb.size * SECTOR_SIZE, self.md.chunk_size)
 
     def _read(self, offset: int, length: int) -> bytes:
         r = []
 
         chunk_sectors = self.md.chunk_sectors
-        offset_sector = offset // 512
-        num_sectors = (length + 512 - 1) // 512
+        offset_sector = offset // SECTOR_SIZE
+        num_sectors = (length + SECTOR_SIZE - 1) // SECTOR_SIZE
 
         while length:
             # Reference: __raid10_find_phys
@@ -377,10 +392,10 @@ class RAID10Stream(AlignedStream):
 
             chunk_remaining = chunk_sectors - sector
             read_sectors = min(num_sectors, chunk_remaining)
-            read_length = min(read_sectors * 512, length)
+            read_length = min(read_sectors * SECTOR_SIZE, length)
 
             sector_on_disk = device.data_offset + sector + (stripe << self.chunk_shift)
-            device.fh.seek(sector_on_disk * 512)
+            device.fh.seek(sector_on_disk * SECTOR_SIZE)
             r.append(device.fh.read(length))
 
             num_sectors -= read_sectors
@@ -391,4 +406,5 @@ class RAID10Stream(AlignedStream):
 
 
 def ffz(val: int) -> int:
+    """Find the index of the first 0 bit using some bit flipping magic."""
     return (val ^ -(~val)).bit_length() - 1

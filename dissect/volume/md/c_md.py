@@ -281,3 +281,5 @@ struct mdp_superblock_1 {
 
 c_md = cstruct()
 c_md.load(md_def)
+
+SECTOR_SIZE = 512
