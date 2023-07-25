@@ -17,6 +17,7 @@ class LinearStream(MappingStream):
 
     def __init__(self, md: MD):
         super().__init__()
+        self.md = md
 
         offset = 0
         for device in md.devices:
@@ -47,15 +48,22 @@ class RAID0Stream(AlignedStream):
         # Determine how many strip zones we need to construct
         # If a RAID0 set consists of devices with different sizes, additional strip zones
         # may exist on the larger devices but not on the smaller ones
+        # Reference: create_strip_zones
         devices = sorted(self.devices.values(), key=operator.attrgetter("raid_disk"))
+        rounded_sectors = {}
+
         num_strip_zones = 0
         for dev1 in devices:
+            rounded_sectors[dev1] = (dev1.sectors // dev1.chunk_sectors) * dev1.chunk_sectors
+
             has_same_sectors = False
             for dev2 in devices:
                 if dev1.dev_number == dev2.dev_number:
                     break
 
-                has_same_sectors = dev1.sectors == dev2.sectors
+                if rounded_sectors[dev1] == dev2.sectors:
+                    has_same_sectors = True
+                    break
 
             if not has_same_sectors:
                 num_strip_zones += 1
@@ -64,30 +72,30 @@ class RAID0Stream(AlignedStream):
         size = 0
         smallest = None
         for dev in devices:
-            if not smallest or dev.sectors < smallest.sectors:
+            if not smallest or rounded_sectors[dev] < rounded_sectors[smallest]:
                 smallest = dev
 
-            size += dev.sectors & ~(self.md.chunk_sectors - 1)
+            size += rounded_sectors[dev] & ~(self.md.chunk_sectors - 1)
 
         # Construct the strip zones
-        zones = [Zone(smallest.sectors * len(devices), 0, devices)]
+        zones = [Zone(rounded_sectors[smallest] * len(devices), 0, devices)]
 
         cur_zone_end = zones[0].zone_end
-        for i in range(1, num_strip_zones):
+        for _ in range(1, num_strip_zones):
             zone_devices = []
-            dev_start = smallest.sectors
+            dev_start = rounded_sectors[smallest]
             smallest = None
 
             for dev in devices:
-                if dev.sectors <= dev_start:
+                if rounded_sectors[dev] <= dev_start:
                     continue
 
                 zone_devices.append(dev)
-                if not smallest or dev.sectors < smallest.sectors:
+                if not smallest or rounded_sectors[dev] < rounded_sectors[smallest]:
                     smallest = dev
 
             num_dev = len(zone_devices)
-            sectors = (smallest.sectors - dev_start) * num_dev
+            sectors = (rounded_sectors[smallest] - dev_start) * num_dev
 
             cur_zone_end += sectors
 
@@ -103,15 +111,18 @@ class RAID0Stream(AlignedStream):
                 if i:
                     offset = offset - self.zones[i - 1].zone_end
                 return zone, offset
+        return None, None
 
     def _read(self, offset: int, length: int) -> bytes:
-        r = []
+        result = []
 
         chunk_sectors = self.md.chunk_sectors
         offset_sector = offset // SECTOR_SIZE
         num_sectors = (length + SECTOR_SIZE - 1) // SECTOR_SIZE
         while length:
             zone, sector_in_zone = self._find_zone(offset_sector)
+            if zone is None:
+                break
 
             sector = sector_in_zone
             if len(self.zones) == 1 or len(self.zones[1].devices) == 1:
@@ -129,13 +140,13 @@ class RAID0Stream(AlignedStream):
 
             sector_on_disk = device.data_offset + sector_in_device
             device.fh.seek(sector_on_disk * SECTOR_SIZE)
-            r.append(device.fh.read(read_length))
+            result.append(device.fh.read(read_length))
 
             num_sectors -= read_sectors
             length -= read_length
             offset_sector += read_sectors
 
-        return b"".join(r)
+        return b"".join(result)
 
 
 class RAID456Stream(AlignedStream):
