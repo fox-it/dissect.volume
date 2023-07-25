@@ -91,7 +91,7 @@ class Device:
 
         if self.sb.major_version == 1:
             self.set_uuid = UUID(bytes_le=self.sb.set_uuid)
-            self.set_name = self.sb.set_name.decode(errors="surrigateescape")
+            self.set_name = self.sb.set_name.split(b"\x00", 1)[0].decode(errors="surrigateescape")
             self.events = self.sb.events
             self.chunk_sectors = self.sb.chunksize
             self.chunk_size = self.chunk_sectors << 9

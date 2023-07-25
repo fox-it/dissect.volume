@@ -11,21 +11,22 @@ def assert_test_bytes(fh: BinaryIO, num_test_sectors: int) -> None:
 
 
 @pytest.mark.parametrize(
-    "fixture, level, num_test_sectors",
+    "fixture, name, level, num_test_sectors",
     [
-        ("md_linear", -1, 4096),
-        ("md_raid0", 0, 22528),
-        ("md_raid1", 1, 4096),
-        ("md_raid4", 4, 4096),
-        ("md_raid5", 5, 4096),
-        ("md_raid6", 6, 4096),
-        ("md_raid10", 10, 4096),
-        ("md_90", 1, 4096),
+        ("md_linear", "fedora:1", -1, 4096),
+        ("md_raid0", "fedora:9", 0, 22528),
+        ("md_raid1", "fedora:3", 1, 4096),
+        ("md_raid4", "fedora:5", 4, 4096),
+        ("md_raid5", "fedora:8", 5, 4096),
+        ("md_raid6", "fedora:7", 6, 4096),
+        ("md_raid10", "fedora:4", 10, 4096),
+        ("md_90", None, 1, 4096),
     ],
 )
-def test_md_read(fixture: str, level: int, num_test_sectors: int, request: pytest.FixtureRequest):
+def test_md_read(fixture: str, name: str, level: int, num_test_sectors: int, request: pytest.FixtureRequest):
     md = MD(request.getfixturevalue(fixture))
 
+    assert md.name == name
     assert md.level == level
     fh = md.open()
 
