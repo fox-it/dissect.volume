@@ -77,6 +77,7 @@ class RAID0Stream(AlignedStream):
             if not smallest or rounded_sectors[dev] < rounded_sectors[smallest]:
                 smallest = dev
 
+            # Calculate a rounded up size of the RAID0 set in sectors
             size += rounded_sectors[dev] & ~(self.md.chunk_sectors - 1)
 
         # Construct the strip zones
@@ -88,6 +89,7 @@ class RAID0Stream(AlignedStream):
             dev_start = rounded_sectors[smallest]
             smallest = None
 
+            # Look for the next smallest device, that is: the smallest device that is larger than the "dev_start" device
             for dev in devices:
                 if rounded_sectors[dev] <= dev_start:
                     continue
@@ -108,6 +110,7 @@ class RAID0Stream(AlignedStream):
         super().__init__(size * SECTOR_SIZE)
 
     def _find_zone(self, offset: int) -> Optional[tuple[Zone, int]]:
+        """Return the zone and the offset within that zone a given ``offset`` is in."""
         for i, zone in enumerate(self.zones):
             if offset < zone.zone_end:
                 if i:
@@ -209,6 +212,9 @@ class RAID456Stream(AlignedStream):
 
             elif self.algorithm == c_md.ALGORITHM_PARITY_N:
                 pd_idx = data_disks
+
+            else:
+                raise MDError(f"Invalid RAID algorithm: {self.algorithm}")
 
         elif self.level == 6:
             if self.algorithm == c_md.ALGORITHM_LEFT_ASYMMETRIC:
