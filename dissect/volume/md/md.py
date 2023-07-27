@@ -94,7 +94,7 @@ class Device:
             self.set_name = self.sb.set_name.split(b"\x00", 1)[0].decode(errors="surrigateescape")
             self.events = self.sb.events
             self.chunk_sectors = self.sb.chunksize
-            self.chunk_size = self.chunk_sectors << 9
+            self.chunk_size = self.chunk_sectors * SECTOR_SIZE
             self.data_offset = self.sb.data_offset
             self.data_size = self.sb.data_size
             self.dev_number = self.sb.dev_number
@@ -113,7 +113,7 @@ class Device:
             self.set_name = None
             self.events = (self.sb.events_hi << 32) | self.sb.events_lo
             self.chunk_size = self.sb.chunk_size
-            self.chunk_sectors = self.chunk_size >> 9
+            self.chunk_sectors = self.chunk_size // SECTOR_SIZE
             self.data_offset = 0
             self.data_size = sb_offset
             self.dev_number = self.sb.this_disk.number
