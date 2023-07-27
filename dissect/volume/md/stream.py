@@ -57,7 +57,8 @@ class RAID0Stream(AlignedStream):
             rounded_sectors[dev1] = (dev1.sectors // dev1.chunk_sectors) * dev1.chunk_sectors
 
             has_same_sectors = False
-           # Check if dev1 is unequal in size to the sizes of any of the previous devices. If so, this means an extra strip zone is present.
+            # Check if dev1 is unequal in size to the sizes of any of the previous devices
+            # If so, this means an extra strip zone is present
             for dev2 in devices:
                 if dev1.dev_number == dev2.dev_number:
                     break
@@ -340,13 +341,13 @@ class RAID456Stream(AlignedStream):
 
             sector_on_disk = dd_dev.data_offset + sector_in_device
             dd_dev.fh.seek(sector_on_disk * SECTOR_SIZE)
-            r.append(dd_dev.fh.read(length))
+            result.append(dd_dev.fh.read(length))
 
             num_sectors -= read_sectors
             length -= read_length
             offset_sector += read_sectors
 
-        return b"".join(r)
+        return b"".join(result)
 
 
 class RAID10Stream(AlignedStream):
@@ -408,13 +409,13 @@ class RAID10Stream(AlignedStream):
 
             sector_on_disk = device.data_offset + sector + (stripe << self.chunk_shift)
             device.fh.seek(sector_on_disk * SECTOR_SIZE)
-            r.append(device.fh.read(length))
+            result.append(device.fh.read(length))
 
             num_sectors -= read_sectors
             length -= read_length
             offset_sector += read_sectors
 
-        return b"".join(r)
+        return b"".join(result)
 
 
 def ffz(val: int) -> int:
