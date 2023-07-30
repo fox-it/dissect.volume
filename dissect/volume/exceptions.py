@@ -8,3 +8,7 @@ class LVM2Error(Error):
 
 class DiskError(Error):
     pass
+
+
+class DMError(Error):
+    pass
