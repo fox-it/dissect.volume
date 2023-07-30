@@ -31,6 +31,16 @@ def lvm() -> Iterator[BinaryIO]:
 
 
 @pytest.fixture
+def lvm_thin() -> Iterator[BinaryIO]:
+    yield from open_file_gz("data/lvm-thin.bin")
+
+
+@pytest.fixture
+def lvm_mirror() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(["data/lvm-mirror-1.bin.gz", "data/lvm-mirror-2.bin.gz"])
+
+
+@pytest.fixture
 def mbr() -> Iterator[BinaryIO]:
     yield from open_file("data/mbr.bin")
 

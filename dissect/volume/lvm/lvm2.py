@@ -1,143 +1,465 @@
+from __future__ import annotations
+
+import ast
+import gzip
 import logging
 import os
+import re
 from bisect import bisect_right
+from datetime import datetime
+from functools import cached_property
+from typing import Any, BinaryIO, Iterator, Optional, Union
 
-from dissect.util.stream import AlignedStream
+from dissect.cstruct import Instance, Structure
+from dissect.util import ts
+from dissect.util.stream import MappingStream, RunlistStream
 
-from dissect.volume.lvm.physical import PhysicalVolume, Segment, Stripe
+from dissect.volume.exceptions import LVM2Error
+from dissect.volume.lvm.c_lvm2 import SECTOR_SIZE, c_lvm
+from dissect.volume.lvm.segment import Segment
 
 log = logging.getLogger(__name__)
 log.setLevel(os.getenv("DISSECT_LOG_LVM", "CRITICAL"))
-
-SECTOR_SIZE = 512
-
-STATUS_FLAG_ALLOCATABLE = "ALLOCATABLE"  # pv only
-STATUS_FLAG_RESIZEABLE = "RESIZEABLE"  # vg only
-STATUS_FLAG_READ = "READ"
-STATUS_FLAG_VISIBLE = "VISIBLE"  # lv only
-STATUS_FLAG_WRITE = "WRITE"
 
 
 class LVM2:
     """Logical Volume Manager"""
 
-    def __init__(self, fhs):
-        if not isinstance(fhs, list):
-            fhs = [fhs]
+    def __init__(self, fh: Union[list[Union[BinaryIO, LVM2Device]], Union[BinaryIO, LVM2Device]]):
+        self.fh = [fh] if not isinstance(fh, list) else fh
+        if not self.fh:
+            raise ValueError("At least one file-like object is required")
 
-        if not fhs:
-            raise ValueError("No physical volumes given")
+        devices = [LVM2Device(fh) if not isinstance(fh, LVM2Device) else fh for fh in self.fh]
+        self.devices = {device.id: device for device in devices}
 
-        fhs = [PhysicalVolume(fh) if not isinstance(fh, PhysicalVolume) else fh for fh in fhs]
+        self.metadata = devices[0].metadata
+        self.contents: str = self.metadata["contents"]
+        self.version: int = self.metadata["version"]
+        self.description: Optional[str] = self.metadata.get("description")
+        self.creation_host: Optional[str] = self.metadata.get("creation_host")
+        self.creation_time: Optional[datetime] = None
+        if creation_time := self.metadata.get("creation_time"):
+            self.creation_time: Optional[datetime] = ts.from_unix(creation_time)
 
-        self.fhs = fhs
+        vg = [VolumeGroup.from_dict(key, value) for key, value in self.metadata.items() if isinstance(value, dict)]
+        if len(vg) != 1:
+            raise LVM2Error(f"Found multiple volume groups, expected only one: {vg}")
+        self.volume_group = vg[0]
+        self.volume_group.attach(self.devices)
 
-        vg = VolumeGroup()
-        vg.physical_volumes = fhs
-        metadata = vg.physical_volumes[0].read_metadata()
-        vg.metadata = metadata.volume_group
+        # vg = VolumeGroup()
+        # vg.physical_volumes = fhs
+        # metadata = vg.physical_volumes[0].read_metadata()
+        # vg.metadata = metadata.volume_group
 
-        pv_lookup = {}
-        for pvmeta in vg.metadata.physical_volumes:
-            for pv in vg.physical_volumes:
-                if pv.id == pvmeta.id.replace("-", ""):
-                    pv.metadata = pvmeta
-                    pv_lookup[pvmeta.name] = pv
-                    break
+        # pv_lookup = {}
+        # for pvmeta in vg.metadata.physical_volumes:
+        #     for pv in vg.physical_volumes:
+        #         if pv.id == pvmeta.id.replace("-", ""):
+        #             pv.metadata = pvmeta
+        #             pv_lookup[pvmeta.name] = pv
+        #             break
 
-        logical_volumes = []
-        for lv_meta in vg.metadata.logical_volumes:
-            segments = []
-            for seg_meta in lv_meta.segments:
-                stripes = []
-                for stripe_meta in seg_meta.stripes:
-                    stripes.append(Stripe(pv_lookup[stripe_meta.physical_volume_name], stripe_meta, vg))
+        # logical_volumes = []
+        # for lv_meta in vg.metadata.logical_volumes:
+        #     segments = []
+        #     for seg_meta in lv_meta.segments:
+        #         stripes = []
+        #         for stripe_meta in seg_meta.stripes:
+        #             stripes.append(Stripe(pv_lookup[stripe_meta.physical_volume_name], stripe_meta, vg))
 
-                segments.append(Segment(stripes, seg_meta, vg))
+        #         segments.append(Segment(stripes, seg_meta, vg))
 
-            logical_volumes.append(LogicalVolume(segments, lv_meta, vg))
+        #     logical_volumes.append(LogicalVolume(segments, lv_meta, vg))
 
-        vg.logical_volumes = logical_volumes
-        self.volume_group = vg
-        self.metadata = metadata
+        # vg.logical_volumes = logical_volumes
+        # self.volume_group = vg
+        # self.metadata = metadata
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<LVM2 vg={self.vg}>"
 
     @property
-    def vg(self):
+    def vg(self) -> VolumeGroup:
         return self.volume_group
 
 
-class VolumeGroup:
-    def __init__(self, physical_volumes=None, logical_volumes=None, metadata=None):
-        self.physical_volumes = physical_volumes or []
-        self.logical_volumes = logical_volumes or []
-        self.metadata = metadata
+class LVM2Device:
+    def __init__(self, fh: BinaryIO):
+        self.fh = fh
 
-    def __repr__(self):
-        return f"<VolumeGroup name={self.name} id={self.id}>"
+        for i in range(4):
+            fh.seek(i * SECTOR_SIZE)
+            lbl = c_lvm.label_header(fh)
+            if lbl.signature == b"LABELONE":
+                self.label = lbl
+                self.label_offset = i * SECTOR_SIZE
+                break
+        else:
+            raise LVM2Error("Can't find physical volume label header")
 
-    @property
-    def name(self):
-        return self.metadata.name
+        fh.seek(self.label_offset + self.label.data_offset)
+        self.header = c_lvm.pv_header(fh)
+        self.id = self.header.identifier.decode()
+        self.size = self.header.volume_size
 
-    @property
-    def id(self):
-        return self.metadata.id
+        self._data_area_descriptors = _read_descriptors(fh, c_lvm.data_area_descriptor)
+        self._metadata_area_descriptors = _read_descriptors(fh, c_lvm.data_area_descriptor)
 
-    @property
-    def pv(self):
-        return self.physical_volumes
+        self._metadata_areas = []
+        for desc in self._metadata_area_descriptors:
+            self.fh.seek(desc.offset)
+            header = c_lvm.mda_header(self.fh)
+            raw_location_descriptors = _read_descriptors(self.fh, c_lvm.raw_locn)
+            self._metadata_areas.append((header, raw_location_descriptors))
 
-    @property
-    def lv(self):
-        return self.logical_volumes
+        self._data_area_offsets = []
 
+        offset = 0
+        for area in self._data_area_descriptors:
+            if offset != 0:
+                self._data_area_offsets.append(offset)
+            offset += area.size
 
-class LogicalVolume(AlignedStream):
-    def __init__(self, segments, metadata, vg):
-        self.segments = segments
-        self.metadata = metadata
-        self.vg = vg
+    def __repr__(self) -> str:
+        return f"<LVMDevice id={self.id}, size={self.size:#x}>"
 
-        self._segment_offsets = []
+    @cached_property
+    def metadata(self) -> Optional[dict]:
+        if not self._metadata_areas:
+            return None
 
-        size = 0
-        for s in self.segments:
-            if size != 0:
-                self._segment_offsets.append(s.sector_offset)
-            size += s.size
+        # Only support the first metadata area for now
+        # Unsure when a second area is used
+        mda_header, raw_locn = self._metadata_areas[0]
 
-        super().__init__(size)
+        self.fh.seek(mda_header.offset + raw_locn[0].offset)
+        return parse_metadata(self.fh.read(raw_locn[0].size - 1).decode())
 
-    def __repr__(self):
-        return f"<LogicalVolume name={self.metadata.name} id={self.metadata.id} segments={len(self.segments)}>"
+    def read_sectors(self, sector: int, count: int) -> bytes:
+        log.debug("LVMDevice::read_sectors(0x%x, 0x%x)", sector, count)
 
-    def read_sectors(self, sector, count):
-        log.debug("LogicalVolume::read_sectors(0x%x, 0x%x)", sector, count)
         r = []
-
-        seg_idx = bisect_right(self._segment_offsets, sector)
+        area_idx = bisect_right(self._data_area_offsets, sector * SECTOR_SIZE)
 
         while count > 0:
-            seg = self.segments[seg_idx]
+            area = self._data_area_descriptors[area_idx]
 
-            seg_remaining_sectors = seg.sector_count - (sector - seg.sector_offset)
-            seg_sectors = min(seg_remaining_sectors, count)
+            area_size = area.size or self.size
+            area_remaining_sectors = (area_size // SECTOR_SIZE) - (sector - area.offset // SECTOR_SIZE)
+            read_sectors = min(area_remaining_sectors, count)
 
-            r.append(seg.read_sectors(sector, seg_sectors))
+            self.fh.seek(area.offset + sector * SECTOR_SIZE)
+            r.append(self.fh.read(read_sectors * SECTOR_SIZE))
+            sector += read_sectors
+            count -= read_sectors
 
-            sector += seg_sectors
-            count -= seg_sectors
-            seg_idx += 1
+            area_idx += 1
 
         return b"".join(r)
 
-    def _read(self, offset, length):
-        log.debug("LogicalVolume::read(0x%x, 0x%x)", offset, length)
-        sector_offset = offset // SECTOR_SIZE
-        sector_count = (length + SECTOR_SIZE - 1) // SECTOR_SIZE
+    def open(self) -> BinaryIO:
+        runlist = []
 
-        r = self.read_sectors(sector_offset, sector_count)
-        return r
+        for area in self._data_area_descriptors:
+            runlist.append((area.offset // 512, (area.size or self.size) // 512))
+
+        return RunlistStream(self.fh, runlist, self.size, 512)
+
+
+class VolumeGroup:
+    def __init__(self):
+        self.name: str = None
+        self.id: str = None
+        self.seqno: int = None
+        self.status: list[str] = []
+        self.flags: list[str] = []
+        self.extent_size: int = None
+        self.max_lv: int = None
+        self.max_pv: int = None
+        self.physical_volumes: dict[str, PhysicalVolume] = {}
+        self.logical_volumes: dict[str, LogicalVolume] = {}
+
+        self.system_id: Optional[str] = None
+        self.allocation_policy: Optional[str] = None
+        self.profile: Optional[str] = None
+        self.metadata_copies: Optional[int] = None
+        self.tags: Optional[list[str]] = None
+        self.historical_logical_volumes: Optional[dict[str, HistoricalLogicalVolume]] = None
+        self.format: Optional[str] = None
+        self.lock_type: Optional[str] = None
+        self.lock_args: Optional[str] = None
+
+    def __repr__(self) -> str:
+        return f"<VolumeGroup name={self.name} id={self.id}>"
+
+    @property
+    def pv(self) -> list[PhysicalVolume]:
+        return list(self.physical_volumes.values())
+
+    @property
+    def lv(self) -> list[LogicalVolume]:
+        return list(self.logical_volumes.values())
+
+    def attach(self, devices: dict[str, LVM2Device]) -> None:
+        for pv in self.physical_volumes.values():
+            pv.dev = devices.get(pv.id.replace("-", ""))
+
+    @classmethod
+    def from_dict(cls, name: str, metadata: dict) -> VolumeGroup:
+        vg = cls()
+        vg.name = name
+        vg.id = metadata["id"]
+        vg.seqno = metadata["seqno"]
+        vg.status = metadata["status"]
+        vg.flags = metadata["flags"]
+        vg.extent_size = metadata["extent_size"]
+        vg.max_lv = metadata["max_lv"]
+        vg.max_pv = metadata["max_pv"]
+
+        pv = metadata["physical_volumes"]
+        vg.physical_volumes = {key: PhysicalVolume.from_dict(vg, key, value) for key, value in pv.items()}
+        lv = metadata.get("logical_volumes", {})
+        vg.logical_volumes = {key: LogicalVolume.from_dict(vg, key, value) for key, value in lv.items()}
+
+        vg.system_id = metadata.get("system_id")
+        vg.allocation_policy = metadata.get("allocation_policy")
+        vg.profile = metadata.get("profile")
+        vg.metadata_copies = metadata.get("metadata_copies")
+        vg.tags = metadata.get("tags")
+        hlv = metadata.get("historical_logical_volumes", {})
+        vg.historical_logical_volumes = {
+            key: HistoricalLogicalVolume.from_dict(vg, key, value) for key, value in hlv.items()
+        }
+        vg.format = metadata.get("format")
+        vg.lock_type = metadata.get("lock_type")
+        vg.lock_args = metadata.get("lock_args")
+
+        return vg
+
+
+class PhysicalVolume:
+    def __init__(self):
+        self.volume_group: VolumeGroup = None
+        self.name: str = None
+        self.id: str = None
+        self.status: list[str] = None
+        self.pe_start: int = None
+        self.pe_count: int = None
+
+        self.dev_size: Optional[int] = None
+        self.device: Optional[str] = None
+        self.device_id: Optional[str] = None
+        self.device_id_type: Optional[str] = None
+        self.ba_start: Optional[int] = None
+        self.ba_size: Optional[int] = None
+        self.tags: Optional[list[str]] = None
+
+        self.dev: Optional[LVM2Device] = None
+
+    def __repr__(self) -> str:
+        return f"<PhysicalVolume name={self.name} id={self.id}>"
+
+    @property
+    def vg(self) -> VolumeGroup:
+        return self.volume_group
+
+    @classmethod
+    def from_dict(cls, vg: VolumeGroup, name: str, metadata: dict) -> PhysicalVolume:
+        pv = cls()
+        pv.volume_group = vg
+        pv.name = name
+        pv.id = metadata["id"]
+        pv.status = metadata["status"]
+        pv.pe_start = metadata["pe_start"]
+        pv.pe_count = metadata["pe_count"]
+
+        pv.dev_size = metadata.get("dev_size")
+        pv.device = metadata.get("device")
+        pv.device_id = metadata.get("device_id")
+        pv.device_id_type = metadata.get("device_id_type")
+        pv.ba_start = metadata.get("ba_start")
+        pv.ba_size = metadata.get("ba_size")
+        pv.tags = metadata.get("tags")
+
+        return pv
+
+
+class LogicalVolume:
+    def __init__(self):
+        self.volume_group: VolumeGroup = None
+        self.name: str = None
+        self.id: str = None
+        self.status: list[str] = None
+        self.flags: list[str] = None
+        self.segment_count: int = None
+        self.segments: Optional[list[Segment]] = None
+
+        self.creation_time: Optional[datetime] = None
+        self.creation_host: Optional[str] = None
+        self.lock_args: Optional[str] = None
+        self.allocation_policy: Optional[str] = None
+        self.profile: Optional[str] = None
+        self.read_ahead: Optional[int] = None
+        self.tags: Optional[list[str]] = None
+
+    def __repr__(self) -> str:
+        return f"<LogicalVolume name={self.name} id={self.id} segments={len(self.segments)}>"
+
+    @property
+    def vg(self) -> VolumeGroup:
+        return self.volume_group
+
+    @property
+    def is_visible(self) -> bool:
+        return "VISIBLE" in self.status
+
+    def open(self) -> BinaryIO:
+        stream = MappingStream()
+        extent_size = self.volume_group.extent_size * SECTOR_SIZE
+        for segment in self.segments:
+            offset = segment.start_extent * extent_size
+            size = segment.extent_count * extent_size
+            stream.add(offset, size, segment.open())
+        return stream
+
+    @classmethod
+    def from_dict(cls, vg: VolumeGroup, name: str, metadata: dict) -> LogicalVolume:
+        lv = cls()
+        lv.volume_group = vg
+        lv.name = name
+        lv.id = metadata["id"]
+        lv.status = metadata["status"]
+        lv.flags = metadata["flags"]
+        lv.segment_count = metadata["segment_count"]
+        lv.segments = [Segment.from_dict(lv, value) for value in metadata.values() if isinstance(value, dict)]
+
+        if creation_time := metadata.get("creation_time"):
+            lv.creation_time = ts.from_unix(creation_time)
+        lv.creation_host: Optional[str] = metadata.get("creation_host")
+        lv.lock_args: Optional[str] = metadata.get("lock_args")
+        lv.allocation_policy: Optional[str] = metadata.get("allocation_policy")
+        lv.profile: Optional[str] = metadata.get("profile")
+        lv.read_ahead: Optional[int] = metadata.get("read_ahead")
+        lv.tags: Optional[list[str]] = metadata.get("tags")
+
+        return lv
+
+
+class HistoricalLogicalVolume:
+    def __init__(self):
+        self.volume_group: VolumeGroup = None
+        self.id: str = None
+        self.name: Optional[str] = None
+        self.creation_time: Optional[datetime] = None
+        self.removal_time: Optional[datetime] = None
+        self.origin: Optional[str] = None
+        self.descendants: Optional[list[str]] = None
+
+    def __repr__(self) -> str:
+        return f"<HistoricalLogicalVolume name={self.name} id={self.id} removal_time={self.removal_time}>"
+
+    @property
+    def vg(self) -> VolumeGroup:
+        return self.volume_group
+
+    @classmethod
+    def from_dict(cls, vg: VolumeGroup, name: str, metadata: dict) -> HistoricalLogicalVolume:
+        hlv = HistoricalLogicalVolume()
+        hlv.volume_group = vg
+        hlv.id = metadata["id"]
+
+        hlv.name = metadata.get("name", name)
+        if creation_time := metadata.get("creation_time"):
+            hlv.creation_time = ts.from_unix(creation_time)
+        if removal_time := metadata.get("removal_time"):
+            hlv.removal_time = ts.from_unix(removal_time)
+        hlv.origin = metadata.get("origin")
+        hlv.descendants = metadata.get("descendants")
+
+        return hlv
+
+
+def _read_descriptors(fh: BinaryIO, ctype: Structure) -> list[Instance]:
+    descriptors = []
+    while True:
+        desc = ctype(fh)
+        if all(v == 0 for v in desc._values.values()):
+            break
+        descriptors.append(desc)
+
+    return descriptors
+
+
+def parse_metadata(string: str) -> dict:
+    root = {}
+    current = root
+    parents = {}
+
+    s = re.sub(r"(#[^\"]+?)$", "", string, flags=re.M)
+
+    it = iter(s.split("\n"))
+    for line in it:
+        line = line.strip()
+        if not line or line[0] == "#":
+            continue
+
+        if line[-1] == "{":
+            name = line[:-1].strip()
+
+            child = {}
+            parent = current
+            parents[id(child)] = parent
+            parent[name] = child
+            current = child
+            continue
+
+        if line[-1] == "}":
+            current = parents[id(current)]
+            continue
+
+        k, v = _parse_key_value(line, it)
+        current[k] = v
+
+    root["_raw"] = string
+    return root
+
+
+def _parse_key_value(s: str, it: Iterator[str]) -> tuple[str, Any]:
+    key, value = s.strip().split("=", 1)
+    key = key.strip()
+    value = value.strip()
+
+    if value[0] == "[":
+        if value[-1] != "]":
+            values = [value]
+            for line in it:
+                values.append(line)
+                if line[-1] == "]":
+                    break
+            value = "".join(values)
+
+    value = ast.literal_eval(value)
+
+    return key, value
+
+
+if __name__ == "__main__":
+    import sys
+
+    path = sys.argv[1]
+    if path.endswith(".bin"):
+        fh = open(path, "rb")
+    else:
+        fh = gzip.GzipFile(path, "rb")
+
+    with fh as fh:
+        lvm = LVM2(fh)
+
+        pool = lvm.vg.logical_volumes["data"].segments[0].open_pool()
+        # pv = LVM2Device(fh)
+
+        from IPython import embed
+
+        embed(colors="Linux")
