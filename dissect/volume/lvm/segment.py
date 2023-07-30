@@ -469,7 +469,6 @@ class VdoPoolSegment(Segment):
         self.hash_zone_threads: int = None
         self.logical_threads: int = None
         self.physical_threads: int = None
-
         self.write_policy: Optional[str] = None
 
     @classmethod
