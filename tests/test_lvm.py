@@ -46,13 +46,13 @@ def test_lvm_thin(lvm_thin: BinaryIO) -> None:
     for lv_name in ["lv-1", "lv-2"]:
         lv = lvm.vg.logical_volumes[lv_name]
         fh = lv.open()
-        for sector in range(4096):
-            assert fh.read(512) == bytes([sector & 0xFF] * 512)
+        for i in range(1, 513):
+            assert fh.read(4096) == i.to_bytes(2, "little") * 2048
 
 
 def test_lvm_mirror(lvm_mirror: list[BinaryIO]) -> None:
     lvm = LVM2(lvm_mirror)
 
     fh = lvm.vg.logical_volumes["mirrormirror"].open()
-    for sector in range(4096):
-        assert fh.read(512) == bytes([sector & 0xFF] * 512)
+    for i in range(1, 513):
+        assert fh.read(4096) == i.to_bytes(2, "little") * 2048

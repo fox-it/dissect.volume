@@ -32,7 +32,7 @@ def lvm() -> Iterator[BinaryIO]:
 
 @pytest.fixture
 def lvm_thin() -> Iterator[BinaryIO]:
-    yield from open_file_gz("data/lvm-thin.bin")
+    yield from open_file_gz("data/lvm-thin.bin.gz")
 
 
 @pytest.fixture
