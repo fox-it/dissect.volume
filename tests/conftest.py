@@ -81,41 +81,46 @@ def dm_thin() -> Iterator[list[BinaryIO]]:
 
 
 def md_linear() -> Iterator[list[BinaryIO]]:
-    yield from open_files_gz(["data/md-linear-1.bin.gz", "data/md-linear-2.bin.gz"])
+    yield from open_files_gz(["data/md/md-linear-1.bin.gz", "data/md/md-linear-2.bin.gz"])
 
 
 @pytest.fixture
 def md_raid0() -> Iterator[list[BinaryIO]]:
-    yield from open_files_gz(["data/md-raid0-1.bin.gz", "data/md-raid0-2.bin.gz", "data/md-raid0-3.bin.gz"])
+    yield from open_files_gz(["data/md/md-raid0-1.bin.gz", "data/md/md-raid0-2.bin.gz", "data/md/md-raid0-3.bin.gz"])
 
 
 @pytest.fixture
 def md_raid1() -> Iterator[list[BinaryIO]]:
-    yield from open_files_gz(["data/md-raid1-1.bin.gz", "data/md-raid1-2.bin.gz"])
+    yield from open_files_gz(["data/md/md-raid1-1.bin.gz", "data/md/md-raid1-2.bin.gz"])
 
 
 @pytest.fixture
 def md_raid4() -> Iterator[list[BinaryIO]]:
-    yield from open_files_gz(["data/md-raid4-1.bin.gz", "data/md-raid4-2.bin.gz", "data/md-raid4-3.bin.gz"])
+    yield from open_files_gz(["data/md/md-raid4-1.bin.gz", "data/md/md-raid4-2.bin.gz", "data/md/md-raid4-3.bin.gz"])
 
 
 @pytest.fixture
 def md_raid5() -> Iterator[list[BinaryIO]]:
-    yield from open_files_gz(["data/md-raid5-1.bin.gz", "data/md-raid5-2.bin.gz", "data/md-raid5-3.bin.gz"])
+    yield from open_files_gz(["data/md/md-raid5-1.bin.gz", "data/md/md-raid5-2.bin.gz", "data/md/md-raid5-3.bin.gz"])
 
 
 @pytest.fixture
 def md_raid6() -> Iterator[list[BinaryIO]]:
     yield from open_files_gz(
-        ["data/md-raid6-1.bin.gz", "data/md-raid6-2.bin.gz", "data/md-raid6-3.bin.gz", "data/md-raid6-4.bin.gz"]
+        [
+            "data/md/md-raid6-1.bin.gz",
+            "data/md/md-raid6-2.bin.gz",
+            "data/md/md-raid6-3.bin.gz",
+            "data/md/md-raid6-4.bin.gz",
+        ]
     )
 
 
 @pytest.fixture
 def md_raid10() -> Iterator[list[BinaryIO]]:
-    yield from open_files_gz(["data/md-raid10-1.bin.gz", "data/md-raid10-2.bin.gz"])
+    yield from open_files_gz(["data/md/md-raid10-1.bin.gz", "data/md/md-raid10-2.bin.gz"])
 
 
 @pytest.fixture
 def md_90_raid1() -> Iterator[list[BinaryIO]]:
-    yield from open_files_gz(["data/md-90-raid1-1.bin.gz", "data/md-90-raid1-2.bin.gz"])
+    yield from open_files_gz(["data/md/md-90-raid1-1.bin.gz", "data/md/md-90-raid1-2.bin.gz"])
