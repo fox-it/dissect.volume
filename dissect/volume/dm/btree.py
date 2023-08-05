@@ -13,12 +13,13 @@ class BTree:
         self.block_size = block_size
         self._block_size_bytes = self.block_size * SECTOR_SIZE
 
+        self._read_node = lru_cache(64)(self._read_node)
+
     def _read_node(self, block: int) -> Node:
         self.fh.seek(block * self._block_size_bytes)
         return Node(self.fh.read(self._block_size_bytes))
 
     def lookup(self, keys: Union[int, list[int]], want_high: bool = False):
-        # TODO handle failure
         keys = [keys] if not isinstance(keys, list) else keys
 
         root = self.root
@@ -35,7 +36,6 @@ class BTree:
         return value
 
     def _lookup(self, root: int, key: int, want_high: bool = False) -> tuple[int, bytes]:
-        # TODO handle failure
         block = root
         while True:
             node = self._read_node(block)
@@ -80,7 +80,6 @@ class Node:
         value_area_size = self.max_entries * self.value_size
         self._value_area = self.buf[value_area_start : value_area_start + value_area_size]
 
-        # TODO test performance
         self.key = lru_cache(1024)(self.key)
 
     @property
