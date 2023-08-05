@@ -19,3 +19,7 @@ def test_dm_thin(dm_thin: list[BinaryIO]) -> None:
     for fh in [thin_0, thin_1]:
         for i in range(1, 513):
             assert fh.read(4096) == i.to_bytes(2, "little") * 2048
+
+    thin_no_size = pool.open(0)
+    thin_no_size.seek((1024 * 1024 * 2) - 512)
+    assert len(thin_no_size.read(1024)) == 512

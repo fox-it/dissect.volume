@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import BinaryIO, Optional
 
 from dissect.util.stream import AlignedStream
@@ -8,17 +10,29 @@ from dissect.volume.exceptions import DMError
 
 
 class ThinPool:
+    """Interact with a device-mapper thin-provision pool."""
+
     def __init__(self, metadata_fh: BinaryIO, data_fh: BinaryIO):
         self.metadata_fh = metadata_fh
         self.data_fh = data_fh
 
         self.metadata = Metadata(metadata_fh)
 
-    def open(self, device_id: int, size_hint: Optional[int] = None):
+    def open(self, device_id: int, size_hint: Optional[int] = None) -> ThinDevice:
+        """Open a thin device on this pool.
+
+        No size information is stored in the pool, so it's recommended to provide a size hint.
+
+        Args:
+            device_id: The device ID to open.
+            size_hint: Optional size hint for the device to open.
+        """
         return ThinDevice(self, device_id, size_hint)
 
 
 class Metadata:
+    """Interact with a device-mapper thin-provision metadata device."""
+
     def __init__(self, fh: BinaryIO):
         self.fh = fh
         self.sb = c_dm.thin_disk_superblock(fh)
@@ -33,6 +47,14 @@ class Metadata:
 
 
 class ThinDevice(AlignedStream):
+    """Implements a readable thin device/volume.
+
+    Args:
+        pool: The pool the device belongs to.
+        device_id: The device ID of the device.
+        size_hint: Optional device size hint.
+    """
+
     def __init__(self, pool: ThinPool, device_id: int, size_hint: Optional[int] = None):
         self.pool = pool
         self.device_id = device_id
@@ -72,6 +94,11 @@ class ThinDevice(AlignedStream):
 
 
 def _unpack_block_time(block_time: int) -> tuple[int, int]:
+    """Unpack a block number and timestamp from a combined block time value.
+
+    Block numbers in device-mapper thin-provisioning store the block number in the upper 40 bits and
+    a timestamp in the lower 24 bits.
+    """
     block = block_time >> 24
     time = block_time & ((1 << 24) - 1)
     return block, time
