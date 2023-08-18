@@ -319,14 +319,25 @@ class BSD:
         self.partitions = list(self._partitions())
 
     def _partitions(self) -> Iterator[Partition]:
+        if self.type == 32:
+            # Get the table offset first
+            self.fh.seek(self._partitions_offset + (c_bsd.BSD_PART_RAW * len(c_bsd.partition)))
+            table_offset = c_bsd.partition(self.fh).p_offset * self.sector_size
+        else:
+            table_offset = 0
+
         self.fh.seek(self._partitions_offset)
         for i in range(self.disklabel.d_npartitions):
+            if i == c_bsd.BSD_PART_RAW:
+                # Skip internal partition
+                continue
+
             if self.type == 32:
                 partition = c_bsd.partition(self.fh)
                 if partition.p_fstype == 0:
                     continue
 
-                offset = partition.p_offset * self.sector_size
+                offset = (partition.p_offset * self.sector_size) - table_offset
                 size = partition.p_size * self.sector_size
                 guid = None
             elif self.type == 64:
