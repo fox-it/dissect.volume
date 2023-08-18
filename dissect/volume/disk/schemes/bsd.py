@@ -1,3 +1,6 @@
+# Reference:
+# - https://github.com/freebsd/freebsd-src/blob/main/sys/geom/part/g_part_bsd.c
+
 import io
 from typing import BinaryIO, Iterator
 from uuid import UUID
@@ -328,21 +331,27 @@ class BSD:
 
         self.fh.seek(self._partitions_offset)
         for i in range(self.disklabel.d_npartitions):
-            if i == c_bsd.BSD_PART_RAW:
-                # Skip internal partition
-                continue
-
             if self.type == 32:
                 partition = c_bsd.partition(self.fh)
-                if partition.p_fstype == 0:
+                if i == c_bsd.BSD_PART_RAW or partition.p_offset == 0 or partition.p_fstype == 0:
+                    # Skip internal partition
                     continue
 
-                offset = (partition.p_offset * self.sector_size) - table_offset
+                offset = partition.p_offset * self.sector_size
+                if offset < table_offset:
+                    continue
+                offset -= table_offset
+
                 size = partition.p_size * self.sector_size
                 guid = None
             elif self.type == 64:
                 partition = c_bsd.partition64(self.fh)
-                if (partition.p_boffset == 0 and partition.p_bsize) or partition.p_fstype == 0:
+                if (
+                    i == c_bsd.BSD_PART_RAW
+                    or (partition.p_boffset == 0 and partition.p_bsize == 0)
+                    or partition.p_fstype == 0
+                ):
+                    # Skip internal partition
                     continue
 
                 offset = partition.p_boffset
