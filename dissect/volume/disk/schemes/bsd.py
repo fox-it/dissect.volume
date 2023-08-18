@@ -322,36 +322,36 @@ class BSD:
         self.partitions = list(self._partitions())
 
     def _partitions(self) -> Iterator[Partition]:
+        table_offset = 0
         if self.type == 32:
             # Get the table offset first
             self.fh.seek(self._partitions_offset + (c_bsd.BSD_PART_RAW * len(c_bsd.partition)))
-            table_offset = c_bsd.partition(self.fh).p_offset * self.sector_size
-        else:
-            table_offset = 0
+            table_offset = c_bsd.partition(self.fh).p_offset
 
         self.fh.seek(self._partitions_offset)
         for i in range(self.disklabel.d_npartitions):
             if self.type == 32:
                 partition = c_bsd.partition(self.fh)
-                if i == c_bsd.BSD_PART_RAW or partition.p_offset == 0 or partition.p_fstype == 0:
+                if i == c_bsd.BSD_PART_RAW:
                     # Skip internal partition
                     continue
 
-                offset = partition.p_offset * self.sector_size
-                if offset < table_offset:
+                if partition.p_size == 0 or partition.p_fstype == 0:
                     continue
-                offset -= table_offset
 
+                if partition.p_offset < table_offset:
+                    continue
+
+                offset = (partition.p_offset - table_offset) * self.sector_size
                 size = partition.p_size * self.sector_size
                 guid = None
             elif self.type == 64:
                 partition = c_bsd.partition64(self.fh)
-                if (
-                    i == c_bsd.BSD_PART_RAW
-                    or (partition.p_boffset == 0 and partition.p_bsize == 0)
-                    or partition.p_fstype == 0
-                ):
+                if i == c_bsd.BSD_PART_RAW:
                     # Skip internal partition
+                    continue
+
+                if (partition.p_boffset == 0 and partition.p_bsize == 0) or partition.p_fstype == 0:
                     continue
 
                 offset = partition.p_boffset
