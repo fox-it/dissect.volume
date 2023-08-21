@@ -125,3 +125,56 @@ def md_raid10() -> Iterator[list[BinaryIO]]:
 @pytest.fixture
 def md_90_raid1() -> Iterator[list[BinaryIO]]:
     yield from open_files_gz(["data/md/md-90-raid1-1.bin.gz", "data/md/md-90-raid1-2.bin.gz"])
+
+
+@pytest.fixture
+def ddf_raid0() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(
+        ["data/ddf/ddf-raid0-1.bin.gz", "data/ddf/ddf-raid0-2.bin.gz", "data/ddf/ddf-raid0-3.bin.gz"]
+    )
+
+
+@pytest.fixture
+def ddf_raid1() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(["data/ddf/ddf-raid1-1.bin.gz", "data/ddf/ddf-raid1-2.bin.gz"])
+
+
+@pytest.fixture
+def ddf_raid0_raid1() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(["data/ddf/ddf-raid0-raid1-1.bin.gz", "data/ddf/ddf-raid0-raid1-2.bin.gz"])
+
+
+@pytest.fixture
+def ddf_raid4() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(["data/ddf/ddf-raid4-1.bin.gz", "data/ddf/ddf-raid4-2.bin.gz"])
+
+
+@pytest.fixture
+def ddf_raid5() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(
+        ["data/ddf/ddf-raid5-1.bin.gz", "data/ddf/ddf-raid5-2.bin.gz", "data/ddf/ddf-raid5-3.bin.gz"]
+    )
+
+
+@pytest.fixture
+def ddf_raid6() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(
+        [
+            "data/ddf/ddf-raid6-1.bin.gz",
+            "data/ddf/ddf-raid6-2.bin.gz",
+            "data/ddf/ddf-raid6-3.bin.gz",
+            "data/ddf/ddf-raid6-4.bin.gz",
+        ]
+    )
+
+
+@pytest.fixture
+def ddf_raid10() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(
+        [
+            "data/ddf/ddf-raid10-1.bin.gz",
+            "data/ddf/ddf-raid10-2.bin.gz",
+            "data/ddf/ddf-raid10-3.bin.gz",
+            "data/ddf/ddf-raid10-4.bin.gz",
+        ]
+    )

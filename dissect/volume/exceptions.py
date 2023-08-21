@@ -20,3 +20,7 @@ class DMError(Error):
 
 class MDError(Error):
     pass
+
+
+class DDFError(Error):
+    pass

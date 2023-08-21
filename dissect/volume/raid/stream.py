@@ -353,17 +353,14 @@ class RAID456Stream(AlignedStream):
         else:
             raise RAIDError(f"Invalid RAID level: {self.level}")
 
-        if ddf_layout:
-            raise NotImplementedError("DDF layout")
-
-        return stripe, offset_in_stripe, dd_idx, pd_idx, qd_idx
+        return stripe, offset_in_stripe, dd_idx, pd_idx, qd_idx, ddf_layout
 
     def _read(self, offset: int, length: int) -> bytes:
         result = []
 
         stripe_size = self.virtual_disk.stripe_size
         while length:
-            stripe, offset_in_stripe, dd_idx, pd_idx, qd_idx = self._get_stripe_read_info(offset)
+            stripe, offset_in_stripe, dd_idx, pd_idx, qd_idx, ddf_layout = self._get_stripe_read_info(offset)
             offset_in_device = stripe * stripe_size + offset_in_stripe
             dd_start, dd_dev = self.disks[dd_idx]
 
