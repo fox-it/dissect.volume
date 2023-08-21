@@ -8,18 +8,13 @@ from typing import BinaryIO, Union
 from uuid import UUID
 
 from dissect.util import ts
-from dissect.util.stream import RangeStream
 
 from dissect.volume.md.c_md import SECTOR_SIZE, c_md
-from dissect.volume.md.stream import (
-    LinearStream,
-    RAID0Stream,
-    RAID10Stream,
-    RAID456Stream,
-)
+from dissect.volume.raid.raid import RAID, Configuration, PhysicalDisk, VirtualDisk
+from dissect.volume.raid.stream import Level
 
 
-class MD:
+class MD(RAID):
     """Read an MD RAID set of one or multiple devices/file-like objects.
 
     Use this class to read from a RAID set.
@@ -29,43 +24,56 @@ class MD:
     """
 
     def __init__(self, fh: Union[list[Union[BinaryIO, Device]], Union[BinaryIO, Device]]):
-        self.fh = [fh] if not isinstance(fh, list) else fh
-        if not fh:
-            raise ValueError("At least one file-like object is required")
+        fhs = [fh] if not isinstance(fh, list) else fh
+        self.devices = [Device(fh) if not isinstance(fh, Device) else fh for fh in fhs]
 
-        devices = [Device(fh) if not isinstance(fh, Device) else fh for fh in self.fh]
+        config_map = {}
+        for dev in self.devices:
+            config_map.setdefault(dev.set_uuid, []).append(dev)
+
+        super().__init__([MDConfiguration(devices) for devices in config_map.values()])
+
+
+class MDConfiguration(Configuration):
+    def __init__(self, devices: list[Union[BinaryIO, Device]]):
+        devices = [Device(fh) if not isinstance(fh, Device) else fh for fh in devices]
+
         self.devices = sorted(devices, key=operator.attrgetter("raid_disk"))
         if len({dev.set_uuid for dev in self.devices}) != 1:
             raise ValueError("Multiple MD sets detected, supply only the devices of a single set")
 
-        self.sb = sorted(self.devices, key=operator.attrgetter("events"), reverse=True)[0].sb
-        reference_dev = self.devices[0]
-        self.uuid = reference_dev.set_uuid
-        self.name = reference_dev.set_name
-        self.level = reference_dev.level
-        self.layout = reference_dev.layout
-        self.chunk_size = reference_dev.chunk_size
-        self.chunk_sectors = reference_dev.chunk_sectors
-        self.raid_disks = self.sb.raid_disks
-
-        self.size = self.open().size
-
-    def open(self) -> BinaryIO:
-        """Return a file-like object of the RAID volume in this set."""
-        if self.level == c_md.LEVEL_LINEAR:
-            return LinearStream(self)
-        elif self.level == 0:
-            return RAID0Stream(self)
-        elif self.level == 1:
-            # Don't really care which mirror to read from, so just open the first device
-            return self.devices[0].open()
-        elif self.level in (4, 5, 6):
-            return RAID456Stream(self)
-        elif self.level == 10:
-            return RAID10Stream(self)
+        virtual_disk = MDDisk(self)
+        super().__init__(self.devices, [virtual_disk])
 
 
-class Device:
+class MDDisk(VirtualDisk):
+    def __init__(self, configuration: MDConfiguration):
+        self.configuration = configuration
+        reference_dev = sorted(configuration.devices, key=operator.attrgetter("events"), reverse=True)[0]
+        disks = {dev.raid_disk: (0, dev) for dev in self.configuration.devices if dev.raid_disk is not None}
+
+        if reference_dev.level == Level.LINEAR:
+            size = sum(disk.size for _, disk in disks.values())
+        elif reference_dev.level == Level.RAID0:
+            size = 0
+            for _, disk in disks.values():
+                size += disk.size & ~(reference_dev.chunk_size - 1)
+        elif reference_dev.level in (Level.RAID1, Level.RAID4, Level.RAID5, Level.RAID6, Level.RAID10):
+            size = reference_dev.sb.size * SECTOR_SIZE
+
+        super().__init__(
+            reference_dev.set_name,
+            reference_dev.set_uuid,
+            size,
+            reference_dev.level,
+            reference_dev.layout,
+            reference_dev.chunk_size,
+            reference_dev.raid_disks,
+            disks,
+        )
+
+
+class Device(PhysicalDisk):
     """Parse metadata from an MD device.
 
     Supports 0.90 and 1.x metadata.
@@ -75,8 +83,6 @@ class Device:
     """
 
     def __init__(self, fh: BinaryIO):
-        self.fh = fh
-
         sb_offset, sb_major, sb_minor = find_super_block(fh)
         if sb_offset is None:
             raise ValueError("File-like object is not an MD device")
@@ -124,16 +130,10 @@ class Device:
         self.update_time = _parse_ts(self.sb.ctime)
         self.level = self.sb.level
         self.layout = self.sb.layout
+        self.raid_disks = self.sb.raid_disks
         self.sectors = self.data_size
 
-    def open(self) -> BinaryIO:
-        """Return a file-like object of the data section of this device."""
-        return RangeStream(
-            self.fh,
-            self.data_offset * SECTOR_SIZE,
-            self.data_size * SECTOR_SIZE,
-            align=self.chunk_size or io.DEFAULT_BUFFER_SIZE,
-        )
+        super().__init__(fh, self.data_offset * SECTOR_SIZE, self.data_size * SECTOR_SIZE)
 
 
 def find_super_block(fh: BinaryIO) -> tuple[int, int, int]:
