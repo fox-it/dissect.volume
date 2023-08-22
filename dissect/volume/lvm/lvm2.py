@@ -443,23 +443,3 @@ def _parse_key_value(s: str, it: Iterator[str]) -> tuple[str, Any]:
     value = ast.literal_eval(value)
 
     return key, value
-
-
-if __name__ == "__main__":
-    import sys
-
-    path = sys.argv[1]
-    if path.endswith(".bin"):
-        fh = open(path, "rb")
-    else:
-        fh = gzip.GzipFile(path, "rb")
-
-    with fh as fh:
-        lvm = LVM2(fh)
-
-        pool = lvm.vg.logical_volumes["data"].segments[0].open_pool()
-        # pv = LVM2Device(fh)
-
-        from IPython import embed
-
-        embed(colors="Linux")
