@@ -47,35 +47,6 @@ class LVM2:
         self.volume_group = vg[0]
         self.volume_group.attach(self.devices)
 
-        # vg = VolumeGroup()
-        # vg.physical_volumes = fhs
-        # metadata = vg.physical_volumes[0].read_metadata()
-        # vg.metadata = metadata.volume_group
-
-        # pv_lookup = {}
-        # for pvmeta in vg.metadata.physical_volumes:
-        #     for pv in vg.physical_volumes:
-        #         if pv.id == pvmeta.id.replace("-", ""):
-        #             pv.metadata = pvmeta
-        #             pv_lookup[pvmeta.name] = pv
-        #             break
-
-        # logical_volumes = []
-        # for lv_meta in vg.metadata.logical_volumes:
-        #     segments = []
-        #     for seg_meta in lv_meta.segments:
-        #         stripes = []
-        #         for stripe_meta in seg_meta.stripes:
-        #             stripes.append(Stripe(pv_lookup[stripe_meta.physical_volume_name], stripe_meta, vg))
-
-        #         segments.append(Segment(stripes, seg_meta, vg))
-
-        #     logical_volumes.append(LogicalVolume(segments, lv_meta, vg))
-
-        # vg.logical_volumes = logical_volumes
-        # self.volume_group = vg
-        # self.metadata = metadata
-
     def __repr__(self) -> str:
         return f"<LVM2 vg={self.vg}>"
 
