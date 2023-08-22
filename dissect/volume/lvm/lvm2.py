@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ast
-import gzip
 import logging
 import os
 import re
