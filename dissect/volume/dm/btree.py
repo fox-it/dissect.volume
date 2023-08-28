@@ -19,7 +19,7 @@ class BTree:
         self.fh.seek(block * self._block_size_bytes)
         return Node(self.fh.read(self._block_size_bytes))
 
-    def lookup(self, keys: Union[int, list[int]], want_high: bool = False):
+    def lookup(self, keys: Union[int, list[int]], want_high: bool = False) -> int:
         keys = [keys] if not isinstance(keys, list) else keys
 
         root = self.root
@@ -93,9 +93,11 @@ class Node:
     def key(self, idx: int) -> int:
         if idx >= self.num_entries:
             raise IndexError("Key index out of bounds")
-        return int.from_bytes(self._key_area[idx * 8 : (idx + 1) * 8], "little")
+        area = idx * 8
+        return int.from_bytes(self._key_area[area : area + 8], "little")
 
     def value(self, idx: int) -> bytes:
         if idx >= self.num_entries:
             raise IndexError("Value index out of bounds")
-        return self._value_area[idx * self.value_size : (idx + 1) * self.value_size]
+        area = idx * self.value_size
+        return self._value_area[area : area + self.value_size]
