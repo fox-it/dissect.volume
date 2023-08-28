@@ -74,11 +74,11 @@ class Node:
 
         key_area_start = len(c_dm.node_header)
         key_area_size = self.max_entries * 8
-        self._key_area = self.buf[key_area_start : key_area_start + key_area_size]
-
-        value_area_start = key_area_start + key_area_size
+        key_area_end = key_area_start + key_area_size
         value_area_size = self.max_entries * self.value_size
-        self._value_area = self.buf[value_area_start : value_area_start + value_area_size]
+ 
+        self._key_area = self.buf[key_area_start : key_area_end]
+        self._value_area = self.buf[key_area_end : key_area_end + value_area_size]
 
         self.key = lru_cache(1024)(self.key)
 
