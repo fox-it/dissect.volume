@@ -6,16 +6,16 @@ from typing import IO, BinaryIO, Iterator
 import pytest
 
 
-def absolute_path(filename) -> str:
+def absolute_path(filename: str) -> str:
     return os.path.join(os.path.dirname(__file__), filename)
 
 
-def open_file(name, mode="rb") -> Iterator[IO]:
+def open_file(name: str, mode: str = "rb") -> Iterator[IO]:
     with open(absolute_path(name), mode) as f:
         yield f
 
 
-def open_file_gz(name, mode="rb") -> Iterator[IO]:
+def open_file_gz(name: str, mode: str = "rb") -> Iterator[IO]:
     with gzip.GzipFile(absolute_path(name), mode) as f:
         yield f
 
