@@ -1,0 +1,2 @@
+tests/data/dm/dm-thin-data.bin.gz filter=lfs diff=lfs merge=lfs -text
+tests/data/dm/dm-thin-metadata.bin.gz filter=lfs diff=lfs merge=lfs -text
