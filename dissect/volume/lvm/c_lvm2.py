@@ -2,35 +2,35 @@ from dissect.cstruct import cstruct
 
 lvm_def = """
 struct label_header {
-    char    signature[8];
-    uint64  sector_number;
-    uint32  checksum;
-    uint32  data_offset;
-    char    type_indicator[8];
+    char    id[8];
+    uint64  sector;
+    uint32  crc;
+    uint32  offset;
+    char    type[8];
 };
 
 struct pv_header {
-    char    identifier[32];
-    uint64  volume_size;
+    char    pv_uuid[32];
+    uint64  device_size;
 };
 
-struct data_area_descriptor {
-    uint64  offset;
-    uint64  size;
+struct disk_locn {
+    uint64  offset;         /* Offset in bytes to start sector */
+    uint64  size;           /* Bytes */
 };
 
 // Metadata area header
 struct mda_header {
-    uint32  checksum;
-    char    signature[16];
+    uint32  checksum;       /* Checksum of rest of mda_header */
+    char    magic[16];      /* To aid scans for metadata */
     uint32  version;
-    uint64  offset;         // Metadata area offset
-    uint64  size;           // Metadata area size
+    uint64  start;          /* Absolute start byte of mda_header */
+    uint64  size;           /* Size of metadata area */
 };
 
 struct raw_locn {
-    uint64  offset;         // Data area offset
-    uint64  size;           // Data area size
+    uint64  offset;         /* Offset in bytes to start sector */
+    uint64  size;           /* Bytes */
     uint32  checksum;
     uint32  flags;
 };
@@ -42,6 +42,8 @@ c_lvm = cstruct()
 c_lvm.load(lvm_def)
 
 SECTOR_SIZE = 512
+
+LABEL_SCAN_SECTORS = 4
 
 STATUS_FLAG_ALLOCATABLE = "ALLOCATABLE"  # pv only
 STATUS_FLAG_RESIZEABLE = "RESIZEABLE"  # vg only

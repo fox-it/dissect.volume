@@ -14,7 +14,7 @@ from dissect.util import ts
 from dissect.util.stream import MappingStream, RunlistStream
 
 from dissect.volume.exceptions import LVM2Error
-from dissect.volume.lvm.c_lvm2 import SECTOR_SIZE, c_lvm
+from dissect.volume.lvm.c_lvm2 import LABEL_SCAN_SECTORS, SECTOR_SIZE, c_lvm
 from dissect.volume.lvm.segment import Segment
 
 log = logging.getLogger(__name__)
@@ -59,23 +59,23 @@ class LVM2Device:
     def __init__(self, fh: BinaryIO):
         self.fh = fh
 
-        for i in range(4):
+        for i in range(LABEL_SCAN_SECTORS):
             fh.seek(i * SECTOR_SIZE)
             lbl = c_lvm.label_header(fh)
-            if lbl.signature == b"LABELONE":
+            if lbl.id == b"LABELONE":
                 self.label = lbl
                 self.label_offset = i * SECTOR_SIZE
                 break
         else:
             raise LVM2Error("Can't find physical volume label header")
 
-        fh.seek(self.label_offset + self.label.data_offset)
+        fh.seek(self.label_offset + self.label.offset)
         self.header = c_lvm.pv_header(fh)
-        self.id = self.header.identifier.decode()
-        self.size = self.header.volume_size
+        self.id = self.header.pv_uuid.decode()
+        self.size = self.header.device_size
 
-        self._data_area_descriptors = _read_descriptors(fh, c_lvm.data_area_descriptor)
-        self._metadata_area_descriptors = _read_descriptors(fh, c_lvm.data_area_descriptor)
+        self._data_area_descriptors = _read_descriptors(fh, c_lvm.disk_locn)
+        self._metadata_area_descriptors = _read_descriptors(fh, c_lvm.disk_locn)
 
         self._metadata_areas = []
         for desc in self._metadata_area_descriptors:
@@ -104,7 +104,7 @@ class LVM2Device:
         # Unsure when a second area is used
         mda_header, raw_locn = self._metadata_areas[0]
 
-        self.fh.seek(mda_header.offset + raw_locn[0].offset)
+        self.fh.seek(mda_header.start + raw_locn[0].offset)
         return parse_metadata(self.fh.read(raw_locn[0].size - 1).decode())
 
     def read_sectors(self, sector: int, count: int) -> bytes:
@@ -133,9 +133,9 @@ class LVM2Device:
         runlist = []
 
         for area in self._data_area_descriptors:
-            runlist.append((area.offset // 512, (area.size or self.size) // 512))
+            runlist.append((area.offset // SECTOR_SIZE, (area.size or self.size) // SECTOR_SIZE))
 
-        return RunlistStream(self.fh, runlist, self.size, 512)
+        return RunlistStream(self.fh, runlist, self.size, SECTOR_SIZE)
 
 
 class VolumeGroup:
@@ -155,7 +155,7 @@ class VolumeGroup:
         self.allocation_policy: Optional[str] = None
         self.profile: Optional[str] = None
         self.metadata_copies: Optional[int] = None
-        self.tags: Optional[list[str]] = None
+        self.tags: list[str] = None
         self.historical_logical_volumes: Optional[dict[str, HistoricalLogicalVolume]] = None
         self.format: Optional[str] = None
         self.lock_type: Optional[str] = None
@@ -197,7 +197,7 @@ class VolumeGroup:
         vg.allocation_policy = metadata.get("allocation_policy")
         vg.profile = metadata.get("profile")
         vg.metadata_copies = metadata.get("metadata_copies")
-        vg.tags = metadata.get("tags")
+        vg.tags = metadata.get("tags", [])
         hlv = metadata.get("historical_logical_volumes", {})
         vg.historical_logical_volumes = {
             key: HistoricalLogicalVolume.from_dict(vg, key, value) for key, value in hlv.items()
@@ -224,7 +224,7 @@ class PhysicalVolume:
         self.device_id_type: Optional[str] = None
         self.ba_start: Optional[int] = None
         self.ba_size: Optional[int] = None
-        self.tags: Optional[list[str]] = None
+        self.tags: list[str] = None
 
         self.dev: Optional[LVM2Device] = None
 
@@ -251,7 +251,7 @@ class PhysicalVolume:
         pv.device_id_type = metadata.get("device_id_type")
         pv.ba_start = metadata.get("ba_start")
         pv.ba_size = metadata.get("ba_size")
-        pv.tags = metadata.get("tags")
+        pv.tags = metadata.get("tags", [])
 
         return pv
 
@@ -264,7 +264,7 @@ class LogicalVolume:
         self.status: list[str] = None
         self.flags: list[str] = None
         self.segment_count: int = None
-        self.segments: Optional[list[Segment]] = None
+        self.segments: list[Segment] = None
 
         self.creation_time: Optional[datetime] = None
         self.creation_host: Optional[str] = None
@@ -272,7 +272,7 @@ class LogicalVolume:
         self.allocation_policy: Optional[str] = None
         self.profile: Optional[str] = None
         self.read_ahead: Optional[int] = None
-        self.tags: Optional[list[str]] = None
+        self.tags: list[str] = None
 
     def __repr__(self) -> str:
         return f"<LogicalVolume name={self.name} id={self.id} segments={len(self.segments)}>"
@@ -307,12 +307,13 @@ class LogicalVolume:
 
         if creation_time := metadata.get("creation_time"):
             lv.creation_time = ts.from_unix(creation_time)
-        lv.creation_host: Optional[str] = metadata.get("creation_host")
-        lv.lock_args: Optional[str] = metadata.get("lock_args")
-        lv.allocation_policy: Optional[str] = metadata.get("allocation_policy")
-        lv.profile: Optional[str] = metadata.get("profile")
-        lv.read_ahead: Optional[int] = metadata.get("read_ahead")
-        lv.tags: Optional[list[str]] = metadata.get("tags")
+
+        lv.creation_host = metadata.get("creation_host")
+        lv.lock_args = metadata.get("lock_args")
+        lv.allocation_policy = metadata.get("allocation_policy")
+        lv.profile = metadata.get("profile")
+        lv.read_ahead = metadata.get("read_ahead")
+        lv.tags = metadata.get("tags", [])
 
         return lv
 
@@ -325,7 +326,7 @@ class HistoricalLogicalVolume:
         self.creation_time: Optional[datetime] = None
         self.removal_time: Optional[datetime] = None
         self.origin: Optional[str] = None
-        self.descendants: Optional[list[str]] = None
+        self.descendants: list[str] = None
 
     def __repr__(self) -> str:
         return f"<HistoricalLogicalVolume name={self.name} id={self.id} removal_time={self.removal_time}>"
@@ -346,7 +347,7 @@ class HistoricalLogicalVolume:
         if removal_time := metadata.get("removal_time"):
             hlv.removal_time = ts.from_unix(removal_time)
         hlv.origin = metadata.get("origin")
-        hlv.descendants = metadata.get("descendants")
+        hlv.descendants = metadata.get("descendants", [])
 
         return hlv
 
@@ -401,14 +402,13 @@ def _parse_key_value(s: str, it: Iterator[str]) -> tuple[str, Any]:
     key = key.strip()
     value = value.strip()
 
-    if value[0] == "[":
-        if value[-1] != "]":
-            values = [value]
-            for line in it:
-                values.append(line)
-                if line[-1] == "]":
-                    break
-            value = "".join(values)
+    if value[0] == "[" and value[-1] != "]":
+        lines = [value]
+        for line in it:
+            lines.append(line)
+            if line[-1] == "]":
+                break
+        value = "".join(lines)
 
     value = ast.literal_eval(value)
 

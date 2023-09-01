@@ -23,7 +23,7 @@ class Segment:
 
         self.reshape_count: Optional[int] = None
         self.data_copies: Optional[int] = None
-        self.tags: Optional[list[str]] = None
+        self.tags: list[str] = None
 
     def __repr__(self) -> str:
         fields = (
@@ -48,7 +48,7 @@ class Segment:
 
         seg.reshape_count = metadata.get("reshape_count")
         seg.data_copies = metadata.get("data_copies")
-        seg.tags = metadata.get("tags")
+        seg.tags = metadata.get("tags", [])
 
         return seg
 
@@ -145,7 +145,7 @@ class MirrorSegment(Segment):
         self.extents_moved: Optional[int] = None
         self.region_size: Optional[int] = None
         self.mirror_log: Optional[str] = None
-        self.mirrors: Optional[list[str]] = None
+        self.mirrors: list[str] = None
 
     def open(self) -> BinaryIO:
         # Just open the first mirror we can
@@ -469,6 +469,7 @@ class VdoPoolSegment(Segment):
         self.hash_zone_threads: int = None
         self.logical_threads: int = None
         self.physical_threads: int = None
+
         self.write_policy: Optional[str] = None
 
     @classmethod
@@ -513,8 +514,8 @@ class RAIDSegment(Segment):
 
         self.data_copies: Optional[int] = None
         self.data_offset: Optional[int] = None
-        self.raids: Optional[list[str]] = None
-        self.raid0_lvs: Optional[list[str]] = None
+        self.raids: list[str] = None
+        self.raid0_lvs: list[str] = None
 
     @classmethod
     def _from_dict(cls, lv: LogicalVolume, metadata: dict) -> RAIDSegment:
@@ -532,6 +533,6 @@ class RAIDSegment(Segment):
 
         raids = metadata.get("raids", [])
         seg.raids = [tuple(raids[i : i + 2]) for i in range(0, len(raids), 2)]
-        seg.raid0_lvs = metadata.get("raid0_lvs")
+        seg.raid0_lvs = metadata.get("raid0_lvs", [])
 
         return seg
