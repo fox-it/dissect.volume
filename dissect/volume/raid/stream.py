@@ -114,9 +114,6 @@ class RAID0Stream(AlignedStream):
             if not smallest or rounded_sizes[dev] < rounded_sizes[smallest]:
                 smallest = dev
 
-            # # Calculate a rounded up size of the RAID0
-            # size += rounded_sizes[dev] & ~(stripe_size - 1)
-
         # Construct the strip zones
         zones = [Zone(rounded_sizes[smallest] * len(disks), 0, disks)]
 

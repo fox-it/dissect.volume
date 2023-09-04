@@ -69,3 +69,5 @@ class VirtualDisk:
             return RAID456Stream(self)
         elif self.level == Level.RAID10:
             return RAID10Stream(self)
+        else:
+            raise NotImplementedError(f"Unsupported RAID level: {self.level}")

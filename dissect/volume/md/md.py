@@ -13,6 +13,8 @@ from dissect.volume.md.c_md import SECTOR_SIZE, c_md
 from dissect.volume.raid.raid import RAID, Configuration, PhysicalDisk, VirtualDisk
 from dissect.volume.raid.stream import Level
 
+DeviceDescriptor = Union[BinaryIO, "Device"]
+
 
 class MD(RAID):
     """Read an MD RAID set of one or multiple devices/file-like objects.
@@ -23,7 +25,7 @@ class MD(RAID):
         fh: A single file-like object or :class:`Device`, or a list of multiple belonging to the same RAID set.
     """
 
-    def __init__(self, fh: Union[list[Union[BinaryIO, Device]], Union[BinaryIO, Device]]):
+    def __init__(self, fh: Union[list[DeviceDescriptor], DeviceDescriptor]):
         fhs = [fh] if not isinstance(fh, list) else fh
         self.devices = [Device(fh) if not isinstance(fh, Device) else fh for fh in fhs]
 
@@ -35,7 +37,7 @@ class MD(RAID):
 
 
 class MDConfiguration(Configuration):
-    def __init__(self, devices: list[Union[BinaryIO, Device]]):
+    def __init__(self, devices: list[DeviceDescriptor]):
         devices = [Device(fh) if not isinstance(fh, Device) else fh for fh in devices]
 
         self.devices = sorted(devices, key=operator.attrgetter("raid_disk"))
@@ -60,6 +62,8 @@ class MDDisk(VirtualDisk):
                 size += disk.size & ~(reference_dev.chunk_size - 1)
         elif reference_dev.level in (Level.RAID1, Level.RAID4, Level.RAID5, Level.RAID6, Level.RAID10):
             size = reference_dev.sb.size * SECTOR_SIZE
+        else:
+            raise ValueError("Invalid MD RAID configuration: No valid RAID level found for the reference disk")
 
         super().__init__(
             reference_dev.set_name,
