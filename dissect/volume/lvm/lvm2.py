@@ -285,6 +285,10 @@ class LogicalVolume:
     def is_visible(self) -> bool:
         return "VISIBLE" in self.status
 
+    @property
+    def type(self) -> Optional[str]:
+        return self.segments[0].type if len(self.segments) else None
+
     def open(self) -> BinaryIO:
         stream = MappingStream()
         extent_size = self.volume_group.extent_size * SECTOR_SIZE
