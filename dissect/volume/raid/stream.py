@@ -108,7 +108,6 @@ class RAID0Stream(AlignedStream):
                 num_strip_zones += 1
 
         # Determine the smallest device
-        # size = 0
         smallest = None
         for _, dev in disks.values():
             if not smallest or rounded_sizes[dev] < rounded_sizes[smallest]:
@@ -156,8 +155,6 @@ class RAID0Stream(AlignedStream):
         result = []
 
         stripe_size = self.virtual_disk.stripe_size
-        # offset_sector = offset // SECTOR_SIZE
-        # num_sectors = (length + SECTOR_SIZE - 1) // SECTOR_SIZE
         while length:
             zone, offset_in_zone = self._find_zone(offset)
             if zone is None:
