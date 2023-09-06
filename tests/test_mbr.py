@@ -1,4 +1,5 @@
 import io
+from typing import BinaryIO
 
 import pytest
 
@@ -6,7 +7,7 @@ from dissect.volume import disk
 from dissect.volume.disk.schemes import MBR
 
 
-def test_mbr(mbr):
+def test_mbr(mbr: BinaryIO) -> None:
     d = disk.Disk(mbr)
 
     assert isinstance(d.scheme, MBR)
@@ -24,7 +25,7 @@ def test_mbr(mbr):
     assert d.partitions[1].type == 0x7
 
 
-def test_mbr_invalid():
+def test_mbr_invalid() -> None:
     buf = io.BytesIO(b"\x00" * 512)
     with pytest.raises(disk.DiskError):
         MBR(buf)

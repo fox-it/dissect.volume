@@ -10,5 +10,13 @@ class DiskError(Error):
     pass
 
 
+class RAIDError(Error):
+    pass
+
+
 class DMError(Error):
+    pass
+
+
+class MDError(Error):
     pass
