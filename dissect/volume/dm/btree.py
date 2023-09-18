@@ -35,7 +35,7 @@ class BTree:
 
         return value
 
-    def _lookup(self, root: int, key: int, want_high: bool = False) -> tuple[int, bytes]:
+    def _lookup(self, root: int, key: int, want_high: bool = False) -> tuple[Optional[int], Optional[bytes]]:
         block = root
         while True:
             node = self._read_node(block)
