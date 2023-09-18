@@ -311,7 +311,7 @@ def _convert_raid_layout(prl: int, rlq: int, srl: int, pec: int, sec: int) -> tu
 
         elif prl == c_ddf.DDF_VDCR_RAID0:
             if rlq != c_ddf.DDF_VDCR_RAID0_SIMPLE:
-                raise ValueError(f"Unsupported DDF RAID layout: ({prl}, {rlq})")
+                raise ValueError(f"Unsupported DDF RAID0 layout: ({prl}, {rlq})")
 
             level = Level.RAID0
 
@@ -320,7 +320,7 @@ def _convert_raid_layout(prl: int, rlq: int, srl: int, pec: int, sec: int) -> tu
                 (rlq == c_ddf.DDF_VDCR_RAID1_SIMPLE and num_disks == 2)
                 or (rlq == c_ddf.DDF_VDCR_RAID1_MULTI and num_disks == 3)
             ):
-                raise ValueError(f"Unsupported DDF RAID layout: ({prl}, {rlq})")
+                raise ValueError(f"Unsupported DDF RAID1 layout: ({prl}, {rlq})")
 
             level = Level.RAID1
 
@@ -330,13 +330,13 @@ def _convert_raid_layout(prl: int, rlq: int, srl: int, pec: int, sec: int) -> tu
             elif rlq == c_ddf.DDF_VDCR_RAID1E_OFFSET:
                 layout = 0x201
             else:
-                raise ValueError(f"Unsupported DDF RAID layout: ({prl}, {rlq})")
+                raise ValueError(f"Unsupported DDF RAID1E layout: ({prl}, {rlq})")
 
             level = Level.RAID10
 
         elif prl == c_ddf.DDF_VDCR_RAID4:
             if rlq != c_ddf.DDF_VDCR_RAID4_N:
-                raise ValueError(f"Unsupported DDF RAID layout: ({prl}, {rlq})")
+                raise ValueError(f"Unsupported DDF RAID4 layout: ({prl}, {rlq})")
 
             level = Level.RAID4
 
@@ -348,7 +348,7 @@ def _convert_raid_layout(prl: int, rlq: int, srl: int, pec: int, sec: int) -> tu
             elif rlq == c_ddf.DDF_VDCR_RAID5_N_CONTINUE:
                 layout = Layout.LEFT_SYMMETRIC
             else:
-                raise ValueError(f"Unsupported DDF RAID layout: ({prl}, {rlq})")
+                raise ValueError(f"Unsupported DDF RAID5 layout: ({prl}, {rlq})")
 
             level = Level.RAID5
 
@@ -360,30 +360,10 @@ def _convert_raid_layout(prl: int, rlq: int, srl: int, pec: int, sec: int) -> tu
             elif rlq == c_ddf.DDF_VDCR_RAID5_N_CONTINUE:
                 layout = Layout.ROTATING_N_CONTINUE
             else:
-                raise ValueError(f"Unsupported DDF RAID layout: ({prl}, {rlq})")
+                raise ValueError(f"Unsupported DDF RAID6 layout: ({prl}, {rlq})")
 
             level = Level.RAID6
         else:
             raise ValueError(f"Unsupported DDF RAID layout: ({prl}, {rlq})")
 
     return level, layout, num_disks
-
-
-if __name__ == "__main__":
-    import gzip
-    import sys
-
-    path = sys.argv[1:]
-    fh = []
-    for p in path:
-        if p.endswith(".gz"):
-            f = gzip.open(p)
-        else:
-            f = open(p, "rb")
-        fh.append(f)
-
-    ddf = DDF(fh)
-
-    from IPython import embed
-
-    embed(colors="Linux")

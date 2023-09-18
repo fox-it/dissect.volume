@@ -14,7 +14,9 @@ from dissect.volume.ddf.ddf import DDF
         ("ddf_raid10", "ddf-raid10", 10, 0x800000, 512),
     ],
 )
-def test_ddf_read(fixture: str, name: str, level: int, size: int, num_test_blocks: int, request: pytest.FixtureRequest):
+def test_ddf_read(
+    fixture: str, name: str, level: int, size: int, num_test_blocks: int, request: pytest.FixtureRequest
+) -> None:
     ddf = DDF(request.getfixturevalue(fixture))
     assert len(ddf.configurations) == 1
     assert len(ddf.configurations[0].virtual_disks) == 1  # These test files only have one volume
