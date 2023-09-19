@@ -107,6 +107,7 @@ struct Physical_Disk_Records {
     uint16  Populated_PDEs;
     uint16  Max_PDE_Supported;
     char    Reserved[52];
+    // Variable data
     // Physical_Disk_Entry Physical_Disk_Entries[Populated_PDEs];
 };
 
@@ -155,6 +156,7 @@ struct Virtual_Disk_Records {
     uint16  Populated_VDEs;
     uint16  Max_VDE_Supported;
     char    Reserved[52];
+    // Variable data
     // Virtual_Disk_Entry  Virtual_Disk_Entries[Populated_VDEs];
 };
 
@@ -238,6 +240,7 @@ struct VD_Configuration_Record {
     char    V2[16];
     char    V3[16];
     char    Vendor_Specific_Scratch_Space[32];
+    // Variable data
     // uint32  Physical_Disk_Sequence[0];
     // uint64  Starting_Block[0];
 };
