@@ -98,6 +98,14 @@ class DDFVirtualDisk(VirtualDisk):
             disks,
         )
 
+    @property
+    def virtual_disk_configuration_record(self) -> VirtualDiskConfigurationRecord:
+        return self.vdcr
+
+    @property
+    def virtual_disk_record(self) -> VirtualDiskRecord:
+        return self.vdr
+
 
 class DDFPhysicalDisk(PhysicalDisk):
     def __init__(self, fh: BinaryIO, sector_size: int = DEFAULT_SECTOR_SIZE):
