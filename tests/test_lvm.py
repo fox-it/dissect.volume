@@ -5,7 +5,7 @@ import pytest
 
 from dissect.volume.exceptions import LVM2Error
 from dissect.volume.lvm import LVM2
-from dissect.volume.lvm.segment import StripedSegment
+from dissect.volume.lvm.metadata import StripedSegment
 
 
 def test_lvm(lvm: BinaryIO) -> None:
