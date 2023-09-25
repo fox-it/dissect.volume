@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from functools import cache
-from typing import BinaryIO, Optional, Self, Union, get_args, get_origin, get_type_hints
+from typing import BinaryIO, Optional, Union, get_args, get_origin, get_type_hints
 
 from dissect.util import ts
 from dissect.util.stream import MappingStream
@@ -17,7 +17,7 @@ from dissect.volume.lvm.physical import LVM2Device
 @dataclass(init=False)
 class MetaBase:
     @classmethod
-    def from_dict(cls, obj: dict, name: Optional[str] = None, parent: Optional[MetaBase] = None) -> Self:
+    def from_dict(cls, obj: dict, name: Optional[str] = None, parent: Optional[MetaBase] = None) -> MetaBase:
         inst = cls()
         inst._from_dict(obj, name=name, parent=parent)
         return inst
@@ -274,7 +274,7 @@ class Segment(MetaBase):
         raise NotImplementedError(f"{self.__class__.__name__} is not implemented yet")
 
     @classmethod
-    def from_dict(cls, obj: dict, name: Optional[str] = None, parent: Optional[MetaBase] = None) -> Self:
+    def from_dict(cls, obj: dict, name: Optional[str] = None, parent: Optional[MetaBase] = None) -> Segment:
         SEGMENT_CLASS_MAP = {
             "linear": StripedSegment,
             "striped": StripedSegment,
