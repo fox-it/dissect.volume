@@ -36,8 +36,7 @@ class MetaBase:
             else:
                 value = obj[field_name]
 
-            if type_ is dict:
-                value_type: MetaBase = get_args(field_type)[1]
+            if type_ is dict and issubclass((value_type := get_args(field_type)[1]), MetaBase):
                 value = {k: value_type.from_dict(v, name=k, parent=self) for k, v in (value or {}).items()}
 
             setattr(self, field_name, value)
