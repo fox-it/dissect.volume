@@ -136,6 +136,7 @@ class PhysicalVolume(MetaBase):
         self._volume_group = parent
 
 
+@dataclass(init=False)
 class LogicalVolume(MetaBase):
     id: str
     status: list[str]
