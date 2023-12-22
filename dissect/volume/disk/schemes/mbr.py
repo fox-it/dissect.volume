@@ -44,8 +44,11 @@ class MBR:
 
         # This sucks but don't have a better way atm
         sig = self.mbr.bootcode[3:11]
-        if any([v in sig for v in [b"MSDOS", b"MSWIN", b"NTFS", b"FAT", b"EXFAT", b"-FVE-FS-"]]):
-            raise DiskError("Sector is a filesystem VBR, not a MBR")
+        if any(v in sig for v in [b"MSDOS", b"MSWIN", b"NTFS", b"FAT", b"EXFAT", b"-FVE-FS-", b"SYSLINUX"]):
+            raise DiskError("Sector is a filesystem VBR, not an MBR")
+
+        if self.mbr.bootcode[18:38] == b"Hit Esc for .altboot" or self.mbr.bootcode[168:174] == b"\r\nQNX ":
+            raise DiskError("Sector is a QNX Boot Sector, not an MBR")
 
         self.partitions: list[Partition] = list(self._partitions(self.mbr, self.offset))
 
