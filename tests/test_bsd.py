@@ -1,8 +1,10 @@
+from typing import BinaryIO
+
 from dissect.volume import disk
 from dissect.volume.disk.schemes import BSD
 
 
-def test_bsd(bsd):
+def test_bsd(bsd: BinaryIO) -> None:
     vs = BSD(bsd)
 
     assert len(vs.partitions) == 3
@@ -26,7 +28,7 @@ def test_bsd(bsd):
     assert vs.partitions[2].open().read() == b"\x05" * 512
 
 
-def test_bsd64(bsd64):
+def test_bsd64(bsd64: BinaryIO) -> None:
     d = disk.Disk(bsd64)
 
     assert isinstance(d.scheme, BSD)

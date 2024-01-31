@@ -1,4 +1,5 @@
 import io
+from typing import BinaryIO
 
 import pytest
 
@@ -6,7 +7,7 @@ from dissect.volume import disk
 from dissect.volume.disk.schemes import GPT
 
 
-def test_gpt(gpt):
+def test_gpt(gpt: BinaryIO) -> None:
     d = disk.Disk(gpt)
 
     assert isinstance(d.scheme, GPT)
@@ -27,13 +28,13 @@ def test_gpt(gpt):
     assert d.partitions[1].name == ""
 
 
-def test_gpt_invalid(gpt):
+def test_gpt_invalid(gpt: BinaryIO) -> None:
     buf = io.BytesIO(gpt.read(512) + 896 * b"\x00")
     with pytest.raises(disk.DiskError):
         GPT(buf)
 
 
-def test_hybrid_gpt(gpt_hybrid):
+def test_hybrid_gpt(gpt_hybrid: BinaryIO) -> None:
     d = disk.Disk(gpt_hybrid)
 
     assert isinstance(d.scheme, GPT)
@@ -72,7 +73,7 @@ def test_hybrid_gpt(gpt_hybrid):
     assert d.partitions[4].name == "Linux filesystem"
 
 
-def test_gpt_4k(gpt_4k):
+def test_gpt_4k(gpt_4k: BinaryIO) -> None:
     with pytest.raises(disk.DiskError) as e:
         disk.Disk(gpt_4k)
 
@@ -103,7 +104,7 @@ def test_gpt_4k(gpt_4k):
     assert d.partitions[2].name == "Linux filesystem"
 
 
-def test_gpt_esxi(gpt_esxi):
+def test_gpt_esxi(gpt_esxi: BinaryIO) -> None:
     d = disk.Disk(gpt_esxi)
 
     assert isinstance(d.scheme, GPT)
@@ -140,7 +141,7 @@ def test_gpt_esxi(gpt_esxi):
     assert d.partitions[4].name == "datastore1"
 
 
-def test_gpt_esxi_no_name_xff(gpt_no_name_xff):
+def test_gpt_esxi_no_name_xff(gpt_no_name_xff: BinaryIO) -> None:
     d = disk.Disk(gpt_no_name_xff)
 
     assert len(d.partitions) == 1

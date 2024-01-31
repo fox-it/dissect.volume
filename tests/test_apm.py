@@ -1,4 +1,5 @@
 import io
+from typing import BinaryIO
 
 import pytest
 
@@ -6,7 +7,7 @@ from dissect.volume import disk
 from dissect.volume.disk.schemes import APM
 
 
-def test_apm(apm):
+def test_apm(apm: BinaryIO) -> None:
     d = disk.Disk(apm)
 
     assert isinstance(d.scheme, APM)
@@ -32,7 +33,7 @@ def test_apm(apm):
     assert d.partitions[2].name == ""
 
 
-def test_apm_invalid():
+def test_apm_invalid() -> None:
     buf = io.BytesIO(512 * b"\x00")
     with pytest.raises(disk.DiskError):
         APM(buf)

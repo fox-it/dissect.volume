@@ -27,7 +27,7 @@ class BTree:
         value = None
         for i, key in enumerate(keys):
             found_key, value = self._lookup(root, key, want_high)
-            if found_key != key:
+            if found_key is None or found_key != key:
                 return None
 
             if i < last_level:
@@ -35,7 +35,7 @@ class BTree:
 
         return value
 
-    def _lookup(self, root: int, key: int, want_high: bool = False) -> tuple[int, bytes]:
+    def _lookup(self, root: int, key: int, want_high: bool = False) -> tuple[Optional[int], Optional[bytes]]:
         block = root
         while True:
             node = self._read_node(block)
@@ -57,8 +57,11 @@ class BTree:
             else:
                 result = high if want_high else low
 
+            if result < 0 or result >= node.num_entries:
+                return None, None
+
             if node.is_internal:
-                block = result
+                block = int.from_bytes(node.value(result), "little")
             elif node.is_leaf:
                 return node.key(result), node.value(result)
 
