@@ -5,6 +5,7 @@ from typing import BinaryIO
 
 import pytest
 
+from dissect.volume.exceptions import RAIDError
 from dissect.volume.md.md import MD, find_super_block
 from dissect.volume.raid.stream import RAID0Stream
 
@@ -148,3 +149,45 @@ def test_md_raid1_multiple_disks(md_raid1: list[BinaryIO]) -> None:
     fh = vd.open()
     for i in range(1, 512 + 1):
         assert fh.read(4096) == i.to_bytes(2, "little") * 2048, f"Failed at block {i}"
+
+
+def test_md_raid10_fallback(md_raid10: list[BinaryIO]) -> None:
+    dev0, dev1, dev2, dev3 = md_raid10
+
+    for devices in [
+        # Missing any one device should work
+        [dev0, dev1, dev2],
+        [dev0, dev1, dev3],
+        [dev0, dev2, dev3],
+        [dev1, dev2, dev3],
+        # Missing two devices should work as long as we have the right 2
+        [dev0, dev2],
+        [dev1, dev3],
+        [dev0, dev3],
+        [dev1, dev2],
+    ]:
+        md = MD(devices)
+        assert len(md.devices) == len(devices)
+
+        fh = md.configurations[0].virtual_disks[0].open()
+        for j in range(1, 513):
+            assert fh.read(4096) == j.to_bytes(2, "little") * 2048
+
+    # If we're missing a mirror or stripe, we should get an error
+    for devices in [
+        # Wrong 2 devices
+        [dev0, dev1],
+        [dev2, dev3],
+        # We don't have a mirror or stripe
+        [dev0],
+        [dev1],
+        [dev2],
+        [dev3],
+    ]:
+        md = MD(list(devices))
+        assert len(md.devices) == len(devices)
+
+        with pytest.raises(RAIDError, match=r"Unable to find device for offset \d+"):
+            fh = md.configurations[0].virtual_disks[0].open()
+            for j in range(1, 513):
+                assert fh.read(4096) == j.to_bytes(2, "little") * 2048
