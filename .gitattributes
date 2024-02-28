@@ -45,6 +45,6 @@ tests/data/ddf/ddf-raid10-1.bin.gz filter=lfs diff=lfs merge=lfs -text
 tests/data/ddf/ddf-raid10-2.bin.gz filter=lfs diff=lfs merge=lfs -text
 tests/data/ddf/ddf-raid10-3.bin.gz filter=lfs diff=lfs merge=lfs -text
 tests/data/ddf/ddf-raid10-4.bin.gz filter=lfs diff=lfs merge=lfs -text
-tests/data/lvm-thin.bin.gz filter=lfs diff=lfs merge=lfs -text
-tests/data/lvm-mirror-2.bin.gz filter=lfs diff=lfs merge=lfs -text
-tests/data/lvm-mirror-1.bin.gz filter=lfs diff=lfs merge=lfs -text
+tests/data/lvm/lvm-thin.bin.gz filter=lfs diff=lfs merge=lfs -text
+tests/data/lvm/lvm-mirror-2.bin.gz filter=lfs diff=lfs merge=lfs -text
+tests/data/lvm/lvm-mirror-1.bin.gz filter=lfs diff=lfs merge=lfs -text
