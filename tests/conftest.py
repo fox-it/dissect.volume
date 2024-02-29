@@ -128,13 +128,37 @@ def md_raid6() -> Iterator[list[BinaryIO]]:
 
 
 @pytest.fixture
-def md_raid10() -> Iterator[list[BinaryIO]]:
+def md_raid10_near() -> Iterator[list[BinaryIO]]:
     yield from open_files_gz(
         [
-            "data/md/md-raid10-1.bin.gz",
-            "data/md/md-raid10-2.bin.gz",
-            "data/md/md-raid10-3.bin.gz",
-            "data/md/md-raid10-4.bin.gz",
+            "data/md/md-raid10-near-1.bin.gz",
+            "data/md/md-raid10-near-2.bin.gz",
+            "data/md/md-raid10-near-3.bin.gz",
+            "data/md/md-raid10-near-4.bin.gz",
+        ]
+    )
+
+
+@pytest.fixture
+def md_raid10_offset() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(
+        [
+            "data/md/md-raid10-offset-1.bin.gz",
+            "data/md/md-raid10-offset-2.bin.gz",
+            "data/md/md-raid10-offset-3.bin.gz",
+            "data/md/md-raid10-offset-4.bin.gz",
+        ]
+    )
+
+
+@pytest.fixture
+def md_raid10_far() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(
+        [
+            "data/md/md-raid10-far-1.bin.gz",
+            "data/md/md-raid10-far-2.bin.gz",
+            "data/md/md-raid10-far-3.bin.gz",
+            "data/md/md-raid10-far-4.bin.gz",
         ]
     )
 

@@ -16,7 +16,9 @@ from dissect.volume.raid.stream import RAID0Stream
         ("md_raid4", "fedora:raid4", 4, 0x200000, 512),
         ("md_raid5", "fedora:raid5", 5, 0x200000, 512),
         ("md_raid6", "fedora:raid6", 6, 0x200000, 512),
-        ("md_raid10", "fedora:raid10", 10, 0x200000, 512),
+        ("md_raid10_near", "fedora:raid10", 10, 0x200000, 512),
+        ("md_raid10_offset", "fedora:raid10", 10, 0x200000, 512),
+        ("md_raid10_far", "fedora:raid10", 10, 0x200000, 512),
         ("md_90_raid1", None, 1, 0x178000, 512),
     ],
 )
