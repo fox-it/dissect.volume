@@ -1,4 +1,5 @@
 import io
+import re
 from typing import BinaryIO
 
 import pytest
@@ -32,6 +33,15 @@ def test_lvm(lvm: BinaryIO) -> None:
     fh = lv.open()
     assert fh.read(1024) == b"\xde\xad\xbe\xef" * 256
     assert fh.read(1024) == b"\x00" * 1024
+
+    vg.pv[0]._dev = None
+    with pytest.raises(
+        LVM2Error,
+        match=re.escape(
+            "Physical volume not found: pv0 (id=2Svcy0-cRH2-3Xrz-87Fv-zNUI-9CoI-Ycoyql, device=/dev/loop1)"
+        ),
+    ):
+        fh = lv.open()
 
 
 def test_lvm_invalid() -> None:
