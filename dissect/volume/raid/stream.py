@@ -420,7 +420,50 @@ class RAID10Stream(AlignedStream):
 
             if self.far_offset:
                 stripe *= self.far_copies
-            device_start, device = self.devices[dev]
+
+            if dev in self.devices:
+                # Happy path, we have the requested device
+                device_start, device = self.devices[dev]
+            else:
+                # Sad path, we have to find the mirror device
+                devs = []
+                for _ in range(0, self.near_copies):
+                    d = dev
+                    s = stripe
+
+                    devs.append((d, s))
+
+                    for _ in range(1, self.far_copies):
+                        set = d // self.far_set_size
+                        d += self.near_copies
+
+                        if self.raid_disks % self.far_set_size and d > self.last_far_set_start:
+                            d -= self.last_far_set_start
+                            d %= self.last_far_set_size
+                            d += self.last_far_set_start
+                        else:
+                            d %= self.far_set_size
+                            d += self.far_set_size * set
+
+                        # Actually supposed to add the stride size, but this seems to work in most common cases
+                        s += 1
+                        devs.append((d, s))
+
+                    dev += 1
+                    if dev >= self.raid_disks:
+                        dev = 0
+                        stripe += 1
+
+                for d, s in devs:
+                    if d in self.devices:
+                        device_start, device = self.devices[d]
+                        stripe = s
+                        break
+                else:
+                    raise RAIDError(
+                        f"Unable to find device for offset {offset} in RAID10 set "
+                        f"{self.virtual_disk.uuid} ({self.virtual_disk.name})"
+                    )
 
             stripe_remaining = stripe_size - offset_in_stripe
             read_length = min(length, stripe_remaining)
