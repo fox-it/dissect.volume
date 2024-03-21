@@ -91,6 +91,11 @@ def dm_thin() -> Iterator[list[BinaryIO]]:
 
 
 @pytest.fixture
+def dm_thin_empty() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(["data/dm/dm-thin-empty-metadata.bin.gz", "data/dm/dm-thin-empty-data.bin.gz"])
+
+
+@pytest.fixture
 def md_linear() -> Iterator[list[BinaryIO]]:
     yield from open_files_gz(["data/md/md-linear-1.bin.gz", "data/md/md-linear-2.bin.gz"])
 

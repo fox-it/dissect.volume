@@ -22,4 +22,24 @@ def test_dm_thin(dm_thin: list[BinaryIO]) -> None:
 
     thin_no_size = pool.open(0)
     thin_no_size.seek((1024 * 1024 * 2) - 512)
-    assert len(thin_no_size.read(1024)) == 512
+    assert len(thin_no_size.read(1024)) == 1024
+
+
+def test_dm_thin_empty(dm_thin_empty: list[BinaryIO]) -> None:
+    metadata_fh, data_fh = dm_thin_empty
+    pool = ThinPool(metadata_fh, data_fh)
+
+    dev = pool.open(0)
+
+    assert dev.read(512) == b"\x00" * 512
+
+    dev.seek(512 * 1024)
+    assert dev.read(512) != b"\x00" * 512
+
+    # Far beyond the file boundary
+    dev.seek(2**64)
+    assert dev.read(512) == b"\x00" * 512
+
+    dev = pool.open(0, 512)
+    assert dev.read(512) == b"\x00" * 512
+    assert dev.read(512) == b""
