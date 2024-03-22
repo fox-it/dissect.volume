@@ -342,7 +342,12 @@ class StripedSegment(Segment):
         offset = 0
         for pv_name, extent_offset in self.stripes:
             if pv_name not in opened_pv:
-                pv_fh = pv[pv_name].dev.open()
+                if (pv_dev := pv[pv_name].dev) is not None:
+                    pv_fh = pv_dev.open()
+                else:
+                    raise LVM2Error(
+                        f"Physical volume not found: {pv_name} (id={pv[pv_name].id}, device={pv[pv_name].device})"
+                    )
                 opened_pv[pv_name] = pv_fh
             else:
                 pv_fh = opened_pv[pv_name]
