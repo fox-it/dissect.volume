@@ -94,6 +94,7 @@ class GPT:
 
                     name = (
                         partition.name.decode("utf-16-le", "ignore")
+                        .split("\x00")[0]
                         .strip("\x00")
                         .strip("\uffff")  # a non-character in UTF-16
                     )
