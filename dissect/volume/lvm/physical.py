@@ -4,7 +4,6 @@ from bisect import bisect_right
 from functools import cached_property
 from typing import Any, BinaryIO, Iterator, Optional
 
-from dissect.cstruct import Instance, Structure
 from dissect.util.stream import RunlistStream
 
 from dissect.volume.exceptions import LVM2Error
@@ -92,7 +91,9 @@ class LVM2Device:
         return RunlistStream(self.fh, runlist, self.size, SECTOR_SIZE)
 
 
-def _read_descriptors(fh: BinaryIO, ctype: Structure) -> list[Instance]:
+def _read_descriptors(
+    fh: BinaryIO, ctype: type[c_lvm.disk_locn | c_lvm.raw_locn]
+) -> list[c_lvm.disk_locn | c_lvm.raw_locn]:
     descriptors = []
     while True:
         desc = ctype(fh)

@@ -1,7 +1,7 @@
 from typing import Any, BinaryIO, Optional, Union
 from uuid import UUID
 
-from dissect.cstruct import Instance
+from dissect.cstruct import Structure
 from dissect.util.stream import RangeStream
 
 PARTITION_TYPES = {
@@ -185,7 +185,7 @@ class Partition:
         flags: Optional[int] = None,
         guid: Optional[UUID] = None,
         vtype_str: Optional[str] = None,
-        raw: Instance = None,
+        raw: Structure = None,
     ):
         self.disk = disk
         self.number = number
