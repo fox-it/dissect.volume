@@ -322,7 +322,6 @@ struct Vendor_Specific_Log {
     char    Reserved[16];
 };
 """
-c_ddf = cstruct(endian=">")
-c_ddf.load(ddf_def)
+c_ddf = cstruct(endian=">").load(ddf_def)
 
 DEFAULT_SECTOR_SIZE = 512

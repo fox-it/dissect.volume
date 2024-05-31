@@ -26,8 +26,7 @@ typedef struct mbr_s {
 } mbr;
 """
 
-c_mbr = cstruct()
-c_mbr.load(mbr_def)
+c_mbr = cstruct().load(mbr_def)
 
 
 class MBR:
