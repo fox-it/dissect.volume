@@ -5,7 +5,7 @@
 import logging
 import os
 
-from dissect import cstruct
+from dissect.cstruct import cstruct
 
 log = logging.getLogger(__name__)
 log.setLevel(os.getenv("DISSECT_LOG_LDM", "CRITICAL"))
@@ -246,5 +246,4 @@ struct KLOG {
 };
 """
 
-c_ldm = cstruct.cstruct(endian=">")
-c_ldm.load(ldm_def)
+c_ldm = cstruct(endian=">").load(ldm_def)

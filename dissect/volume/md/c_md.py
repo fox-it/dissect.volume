@@ -279,7 +279,6 @@ struct mdp_superblock_1 {
 #define ALGORITHM_PARITY_N_6            ALGORITHM_PARITY_N
 """  # noqa: E501
 
-c_md = cstruct()
-c_md.load(md_def)
+c_md = cstruct().load(md_def)
 
 SECTOR_SIZE = 512

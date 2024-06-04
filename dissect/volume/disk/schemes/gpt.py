@@ -1,6 +1,6 @@
 from typing import BinaryIO, Iterator
 
-from dissect import cstruct
+from dissect.cstruct import cstruct
 
 from dissect.volume.disk.partition import Partition
 from dissect.volume.disk.schemes.mbr import MBR
@@ -43,8 +43,7 @@ struct GPT_PARTITION {
 // 56 (0x38)    72 bytes     Partition name (36 UTF-16LE code units)
 """
 
-c_gpt = cstruct.cstruct()
-c_gpt.load(gpt_def)
+c_gpt = cstruct().load(gpt_def)
 
 
 class GPT:

@@ -141,12 +141,12 @@ struct Physical_Disk_Records {
 struct Virtual_Disk_Entry {
     char    VD_GUID[24];
     uint16  VD_Number;
-    char    Reserved[2];
+    char    Reserved1[2];
     uint32  VD_Type;
     uint8   VD_State;
     uint8   Init_State;
     uint8   Partially_Optimal_Drive_Failures_Remaining;     /* DDF 2.0 */
-    char    Reserved[13];
+    char    Reserved2[13];
     char    VD_Name[16];
 };
 
@@ -322,7 +322,6 @@ struct Vendor_Specific_Log {
     char    Reserved[16];
 };
 """
-c_ddf = cstruct(endian=">")
-c_ddf.load(ddf_def)
+c_ddf = cstruct(endian=">").load(ddf_def)
 
 DEFAULT_SECTOR_SIZE = 512
