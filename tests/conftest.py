@@ -27,62 +27,62 @@ def open_files_gz(names: list[str], mode: str = "rb") -> Iterator[list[gzip.Gzip
 
 @pytest.fixture
 def lvm() -> Iterator[BinaryIO]:
-    yield from open_file_gz("data/lvm.bin.gz")
+    yield from open_file_gz("data/lvm/lvm.bin.gz")
 
 
 @pytest.fixture
 def lvm_thin() -> Iterator[BinaryIO]:
-    yield from open_file_gz("data/lvm-thin.bin.gz")
+    yield from open_file_gz("data/lvm/lvm-thin.bin.gz")
 
 
 @pytest.fixture
 def lvm_mirror() -> Iterator[list[BinaryIO]]:
-    yield from open_files_gz(["data/lvm-mirror-1.bin.gz", "data/lvm-mirror-2.bin.gz"])
+    yield from open_files_gz(["data/lvm/lvm-mirror-1.bin.gz", "data/lvm/lvm-mirror-2.bin.gz"])
 
 
 @pytest.fixture
 def mbr() -> Iterator[BinaryIO]:
-    yield from open_file("data/mbr.bin")
+    yield from open_file("data/disk/mbr.bin")
 
 
 @pytest.fixture
 def gpt() -> Iterator[BinaryIO]:
-    yield from open_file("data/gpt.bin")
+    yield from open_file("data/disk/gpt.bin")
 
 
 @pytest.fixture
 def gpt_hybrid() -> Iterator[BinaryIO]:
-    yield from open_file("data/gpt_hybrid.bin")
+    yield from open_file("data/disk/gpt_hybrid.bin")
 
 
 @pytest.fixture
 def gpt_4k() -> Iterator[BinaryIO]:
-    yield from open_file("data/gpt_4k.bin")
+    yield from open_file("data/disk/gpt_4k.bin")
 
 
 @pytest.fixture
 def gpt_esxi() -> Iterator[BinaryIO]:
-    yield from open_file("data/gpt_esxi.bin")
+    yield from open_file("data/disk/gpt_esxi.bin")
 
 
 @pytest.fixture
 def gpt_no_name_xff() -> Iterator[BinaryIO]:
-    yield from open_file("data/gpt_no_name_xff.bin")
+    yield from open_file("data/disk/gpt_no_name_xff.bin")
 
 
 @pytest.fixture
 def apm() -> Iterator[BinaryIO]:
-    yield from open_file("data/apm.bin")
+    yield from open_file("data/disk/apm.bin")
 
 
 @pytest.fixture
 def bsd() -> Iterator[BinaryIO]:
-    yield from open_file("data/bsd.bin")
+    yield from open_file("data/disk/bsd.bin")
 
 
 @pytest.fixture
 def bsd64() -> Iterator[BinaryIO]:
-    yield from open_file_gz("data/bsd64.bin.gz")
+    yield from open_file_gz("data/disk/bsd64.bin.gz")
 
 
 @pytest.fixture
@@ -128,8 +128,39 @@ def md_raid6() -> Iterator[list[BinaryIO]]:
 
 
 @pytest.fixture
-def md_raid10() -> Iterator[list[BinaryIO]]:
-    yield from open_files_gz(["data/md/md-raid10-1.bin.gz", "data/md/md-raid10-2.bin.gz"])
+def md_raid10_near() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(
+        [
+            "data/md/md-raid10-near-1.bin.gz",
+            "data/md/md-raid10-near-2.bin.gz",
+            "data/md/md-raid10-near-3.bin.gz",
+            "data/md/md-raid10-near-4.bin.gz",
+        ]
+    )
+
+
+@pytest.fixture
+def md_raid10_offset() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(
+        [
+            "data/md/md-raid10-offset-1.bin.gz",
+            "data/md/md-raid10-offset-2.bin.gz",
+            "data/md/md-raid10-offset-3.bin.gz",
+            "data/md/md-raid10-offset-4.bin.gz",
+        ]
+    )
+
+
+@pytest.fixture
+def md_raid10_far() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(
+        [
+            "data/md/md-raid10-far-1.bin.gz",
+            "data/md/md-raid10-far-2.bin.gz",
+            "data/md/md-raid10-far-3.bin.gz",
+            "data/md/md-raid10-far-4.bin.gz",
+        ]
+    )
 
 
 @pytest.fixture
