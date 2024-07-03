@@ -1,6 +1,4 @@
 tests/data/dm/* filter=lfs diff=lfs merge=lfs -text
 tests/data/md/* filter=lfs diff=lfs merge=lfs -text
 tests/data/ddf/* filter=lfs diff=lfs merge=lfs -text
-tests/data/lvm-thin.bin.gz filter=lfs diff=lfs merge=lfs -text
-tests/data/lvm-mirror-2.bin.gz filter=lfs diff=lfs merge=lfs -text
-tests/data/lvm-mirror-1.bin.gz filter=lfs diff=lfs merge=lfs -text
+tests/data/lvm/* filter=lfs diff=lfs merge=lfs -text

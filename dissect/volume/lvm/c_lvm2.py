@@ -38,8 +38,7 @@ struct raw_locn {
 #define RAW_LOCN_IGNORED    0x00000001
 """
 
-c_lvm = cstruct()
-c_lvm.load(lvm_def)
+c_lvm = cstruct().load(lvm_def)
 
 SECTOR_SIZE = 512
 

@@ -1,6 +1,6 @@
 from typing import BinaryIO, Iterator
 
-from dissect import cstruct
+from dissect.cstruct import cstruct
 
 from dissect.volume.disk.partition import Partition
 from dissect.volume.exceptions import DiskError
@@ -29,9 +29,7 @@ struct partition_entry {
 };
 """
 
-c_apm = cstruct.cstruct()
-c_apm.load(apm_def)
-c_apm.endian = ">"
+c_apm = cstruct(endian=">").load(apm_def)
 
 
 class APM:
