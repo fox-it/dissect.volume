@@ -77,6 +77,10 @@ class ThinDevice(AlignedStream):
         while length > 0:
             block_info = data_mapping.lookup([self.device_id, block])
             if block_info is None:
+                remaining = length
+                if self.size is None or (remaining := self.size - offset) > 0:
+                    return b"\x00" * min(length, remaining)
+
                 break
 
             block_time = int.from_bytes(block_info, "little")
