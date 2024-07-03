@@ -87,7 +87,6 @@ struct disk_device_details {
 };
 """
 
-c_dm = cstruct()
-c_dm.load(dm_def)
+c_dm = cstruct().load(dm_def)
 
 SECTOR_SIZE = 512

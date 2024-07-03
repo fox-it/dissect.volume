@@ -3,7 +3,6 @@ from __future__ import annotations
 import io
 from typing import BinaryIO, Union
 
-from dissect.cstruct.types import Instance, Structure
 from dissect.util import ts
 
 from dissect.volume.ddf.c_ddf import DEFAULT_SECTOR_SIZE, c_ddf
@@ -251,7 +250,13 @@ class VirtualDiskConfigurationRecord:
         return f"<VirtualDiskConfigurationRecord guid={self.guid}>"
 
 
-def _read_section_header(fh: BinaryIO, structure: Structure, signature: int) -> Instance:
+def _read_section_header(
+    fh: BinaryIO,
+    structure: type[
+        c_ddf.Physical_Disk_Records | c_ddf.Virtual_Disk_Records | c_ddf.Controller_Data | c_ddf.Physical_Disk_Data
+    ],
+    signature: int,
+) -> c_ddf.Physical_Disk_Records | c_ddf.Virtual_Disk_Records | c_ddf.Controller_Data | c_ddf.Physical_Disk_Data:
     obj = structure(fh)
     if obj.Signature != signature:
         raise DDFError(f"Invalid {structure.name} header. Signature: {obj.Signature:#010x}, expected {signature:#x}")

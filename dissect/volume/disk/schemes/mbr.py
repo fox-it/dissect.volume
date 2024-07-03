@@ -1,6 +1,6 @@
 from typing import BinaryIO, Iterator, Optional
 
-from dissect.cstruct import Instance, cstruct
+from dissect.cstruct import cstruct
 
 from dissect.volume.disk.partition import Partition
 from dissect.volume.exceptions import DiskError
@@ -26,8 +26,7 @@ typedef struct mbr_s {
 } mbr;
 """
 
-c_mbr = cstruct()
-c_mbr.load(mbr_def)
+c_mbr = cstruct().load(mbr_def)
 
 
 class MBR:
@@ -53,7 +52,7 @@ class MBR:
         self.partitions: list[Partition] = list(self._partitions(self.mbr, self.offset))
 
     def _partitions(
-        self, mbr: Instance, offset: int, num_start: int = 0, ebr_offset: Optional[int] = None
+        self, mbr: c_mbr.mbr_s, offset: int, num_start: int = 0, ebr_offset: Optional[int] = None
     ) -> Iterator[Partition]:
         for num, partition in enumerate(mbr.part):
             if partition.type == 0x00:

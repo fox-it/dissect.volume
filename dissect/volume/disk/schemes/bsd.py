@@ -5,7 +5,7 @@ import io
 from typing import BinaryIO, Iterator
 from uuid import UUID
 
-from dissect import cstruct
+from dissect.cstruct import cstruct
 
 from dissect.volume.disk.partition import Partition
 from dissect.volume.exceptions import DiskError
@@ -215,8 +215,7 @@ struct disklabel64 {
 #define D_CHAIN             0x10                /* can do back-back transfers */
 """
 
-c_bsd = cstruct.cstruct()
-c_bsd.load(bsd_def)
+c_bsd = cstruct().load(bsd_def)
 
 DTYPE_NAMES = {
     0: "unknown",

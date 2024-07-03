@@ -5,7 +5,7 @@ import os
 import uuid
 from collections import defaultdict
 
-from dissect import cstruct
+from dissect.cstruct import cstruct
 from dissect.util.stream import AlignedStream
 
 from dissect.volume.exceptions import Error
@@ -144,8 +144,7 @@ struct range_descriptor {
 };
 """
 
-c_vss = cstruct.cstruct()
-c_vss.load(vss_def)
+c_vss = cstruct().load(vss_def)
 
 RECORD_TYPE = c_vss.RECORD_TYPE
 BLOCK_FLAG = c_vss.BLOCK_FLAG
