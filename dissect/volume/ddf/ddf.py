@@ -1,43 +1,51 @@
 from __future__ import annotations
 
 import io
-from typing import BinaryIO, Union
+from typing import TYPE_CHECKING, BinaryIO
 
 from dissect.util import ts
 
 from dissect.volume.ddf.c_ddf import DEFAULT_SECTOR_SIZE, c_ddf
 from dissect.volume.exceptions import DDFError
-from dissect.volume.raid.raid import RAID, Configuration, PhysicalDisk, VirtualDisk
+from dissect.volume.raid.raid import (
+    RAID,
+    Configuration,
+    DiskMap,
+    PhysicalDisk,
+    VirtualDisk,
+)
 from dissect.volume.raid.stream import Layout, Level
+
+if TYPE_CHECKING:
+    DDFPhysicalDiskDescriptor = BinaryIO | "DDFPhysicalDisk"
 
 DECADE = 3600 * 24 * (365 * 10 + 2)
 
 
 class DDF(RAID):
-    def __init__(self, fh: list[Union[BinaryIO, DDFPhysicalDisk]], sector_size: int = DEFAULT_SECTOR_SIZE):
+    def __init__(
+        self,
+        fh: list[DDFPhysicalDiskDescriptor] | DDFPhysicalDiskDescriptor,
+        sector_size: int = DEFAULT_SECTOR_SIZE,
+    ):
         fhs = [fh] if not isinstance(fh, list) else fh
-        self.disks = [DDFPhysicalDisk(f, sector_size) if not isinstance(f, DDFPhysicalDisk) else f for f in fhs]
-        self.sector_size = sector_size
+        physical_disks = [DDFPhysicalDisk(f, sector_size) if not isinstance(f, DDFPhysicalDisk) else f for f in fhs]
 
         config_map = {}
-        for pd in self.disks:
+        for pd in physical_disks:
             config_map.setdefault(pd.anchor.DDF_Header_GUID, []).append(pd)
 
         super().__init__([DDFConfiguration(disks) for disks in config_map.values()])
 
 
 class DDFConfiguration(Configuration):
-    def __init__(self, fh: list[Union[BinaryIO, PhysicalDisk]], sector_size: int = DEFAULT_SECTOR_SIZE):
-        fhs = [fh] if not isinstance(fh, list) else fh
-        self.disks = [DDFPhysicalDisk(f, sector_size) if not isinstance(f, DDFPhysicalDisk) else f for f in fhs]
-        self.sector_size = sector_size
-
+    def __init__(self, physical_disks: list[DDFPhysicalDisk]):
         pd_map: dict[int, DDFPhysicalDisk] = {}
         vde_map: dict[bytes, VirtualDiskRecord] = {}
         vdcr_map: dict[bytes, VirtualDiskConfigurationRecord] = {}
         vdcr_uniq: dict[tuple[bytes, int], VirtualDiskConfigurationRecord] = {}
 
-        for pd in self.disks:
+        for pd in physical_disks:
             pd_map[pd.reference] = pd
             vde_map.update({vde.guid: vde for vde in pd.virtual_disk_records})
             vdcr_map.update({vdcr.guid: vdcr for vdcr in pd.virtual_disk_configuration_records})
@@ -61,7 +69,7 @@ class DDFConfiguration(Configuration):
                     i += 1
 
         virtual_disks = [DDFVirtualDisk(vdcr_map[guid], vde_map[guid], vd_map[guid]) for guid in vd_map.keys()]
-        super().__init__(self.disks, virtual_disks)
+        super().__init__(physical_disks, virtual_disks)
 
 
 class DDFVirtualDisk(VirtualDisk):
@@ -69,14 +77,14 @@ class DDFVirtualDisk(VirtualDisk):
         self,
         vdcr: VirtualDiskConfigurationRecord,
         vdr: VirtualDiskRecord,
-        disks: dict[int, tuple[int, DDFPhysicalDisk]],
+        disks: DiskMap,
     ):
         self.vdcr = vdcr
         self.vdr = vdr
         self.disks = disks
 
         if (block_size := self.vdcr.block_size) == 0xFFFF:
-            block_size = list(self.disks.values())[0][1].block_size
+            block_size = list(disks.values())[0][1].block_size
 
         level, layout, num_disks = _convert_raid_layout(
             vdcr.primary_raid_level,
@@ -218,7 +226,7 @@ class VirtualDiskRecord:
         self.state = self.header.VD_State
         self.init_state = self.header.Init_State
         name = self.header.VD_Name.split(b"\x00")[0]
-        self.name = name.decode("utf-8") if self.type & 0x02 else name.decode()
+        self.name = name.decode(encoding="utf-8") if self.type & 0x02 else name.decode(encoding="ascii")
 
     def __repr__(self) -> str:
         return f"<VirtualDiskRecord guid={self.guid} number={self.number} type={self.type:#x} name={self.name!r}>"

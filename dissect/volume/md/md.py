@@ -4,7 +4,7 @@ import datetime
 import io
 import operator
 import struct
-from typing import BinaryIO, Union
+from typing import TYPE_CHECKING, BinaryIO
 from uuid import UUID
 
 from dissect.util import ts
@@ -13,7 +13,8 @@ from dissect.volume.md.c_md import SECTOR_SIZE, c_md
 from dissect.volume.raid.raid import RAID, Configuration, PhysicalDisk, VirtualDisk
 from dissect.volume.raid.stream import Level
 
-DeviceDescriptor = Union[BinaryIO, "Device"]
+if TYPE_CHECKING:
+    MDPhysicalDiskDescriptor = BinaryIO | "MDPhysicalDisk"
 
 
 class MD(RAID):
@@ -22,62 +23,63 @@ class MD(RAID):
     Use this class to read from a RAID set.
 
     Args:
-        fh: A single file-like object or :class:`Device`, or a list of multiple belonging to the same RAID set.
+        fh: A single file-like object or :class:`MDPhysicalDisk`, or a list of multiple belonging to the same RAID set.
     """
 
-    def __init__(self, fh: Union[list[DeviceDescriptor], DeviceDescriptor]):
+    def __init__(self, fh: list[MDPhysicalDiskDescriptor] | MDPhysicalDiskDescriptor):
         fhs = [fh] if not isinstance(fh, list) else fh
-        self.devices = [Device(fh) if not isinstance(fh, Device) else fh for fh in fhs]
+        physical_disks = [MDPhysicalDisk(fh) if not isinstance(fh, MDPhysicalDisk) else fh for fh in fhs]
 
         config_map = {}
-        for dev in self.devices:
-            config_map.setdefault(dev.set_uuid, []).append(dev)
+        for disk in physical_disks:
+            config_map.setdefault(disk.set_uuid, []).append(disk)
 
-        super().__init__([MDConfiguration(devices) for devices in config_map.values()])
+        super().__init__([MDConfiguration(disks) for disks in config_map.values()])
 
 
 class MDConfiguration(Configuration):
-    def __init__(self, devices: list[DeviceDescriptor]):
-        devices = [Device(fh) if not isinstance(fh, Device) else fh for fh in devices]
+    def __init__(self, physical_disks: list[MDPhysicalDisk]):
+        physical_disks = sorted(physical_disks, key=operator.attrgetter("raid_disk"))
 
-        self.devices = sorted(devices, key=operator.attrgetter("raid_disk"))
-        if len({dev.set_uuid for dev in self.devices}) != 1:
-            raise ValueError("Multiple MD sets detected, supply only the devices of a single set")
+        if len({disk.set_uuid for disk in physical_disks}) != 1:
+            raise ValueError("Multiple MD sets detected, supply only the disks of a single set")
 
-        virtual_disk = MDDisk(self)
-        super().__init__(self.devices, [virtual_disk])
+        virtual_disks = [MDVirtualDisk(physical_disks)]
+        super().__init__(physical_disks, virtual_disks)
 
 
-class MDDisk(VirtualDisk):
-    def __init__(self, configuration: MDConfiguration):
-        self.configuration = configuration
-        reference_dev = sorted(configuration.devices, key=operator.attrgetter("events"), reverse=True)[0]
-        disks = {dev.raid_disk: (0, dev) for dev in self.configuration.devices if dev.raid_disk is not None}
+class MDVirtualDisk(VirtualDisk):
+    def __init__(self, physical_disks: list[MDPhysicalDisk]):
+        reference_disk = sorted(physical_disks, key=operator.attrgetter("events"), reverse=True)[0]
+        disk_map = {disk.raid_disk: (0, disk) for disk in physical_disks if disk.raid_disk is not None}
 
-        if reference_dev.level == Level.LINEAR:
-            size = sum(disk.size for _, disk in disks.values())
-        elif reference_dev.level == Level.RAID0:
+        if reference_disk.level == Level.LINEAR:
+            size = sum(disk.size for _, disk in disk_map.values())
+        elif reference_disk.level == Level.RAID0:
             size = 0
-            for _, disk in disks.values():
-                size += disk.size & ~(reference_dev.chunk_size - 1)
-        elif reference_dev.level in (Level.RAID1, Level.RAID4, Level.RAID5, Level.RAID6, Level.RAID10):
-            size = reference_dev.sb.size * SECTOR_SIZE
+            for _, disk in disk_map.values():
+                size += disk.size & ~(reference_disk.chunk_size - 1)
+        elif reference_disk.level in (Level.RAID1, Level.RAID4, Level.RAID5, Level.RAID6, Level.RAID10):
+            size = reference_disk.sb.size * SECTOR_SIZE
         else:
-            raise ValueError("Invalid MD RAID configuration: No valid RAID level found for the reference disk")
+            raise ValueError(
+                "Invalid MD RAID configuration: No valid RAID level found for the reference disk, found: %d",
+                reference_disk.level,
+            )
 
         super().__init__(
-            reference_dev.set_name,
-            reference_dev.set_uuid,
+            reference_disk.set_name,
+            reference_disk.set_uuid,
             size,
-            reference_dev.level,
-            reference_dev.layout,
-            reference_dev.chunk_size,
-            reference_dev.raid_disks,
-            disks,
+            reference_disk.level,
+            reference_disk.layout,
+            reference_disk.chunk_size,
+            reference_disk.raid_disks,
+            disk_map,
         )
 
 
-class Device(PhysicalDisk):
+class MDPhysicalDisk(PhysicalDisk):
     """Parse metadata from an MD device.
 
     Supports 0.90 and 1.x metadata.
