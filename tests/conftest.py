@@ -27,17 +27,17 @@ def open_files_gz(names: list[str], mode: str = "rb") -> Iterator[list[gzip.Gzip
 
 @pytest.fixture
 def lvm() -> Iterator[BinaryIO]:
-    yield from open_file_gz("data/lvm.bin.gz")
+    yield from open_file_gz("data/lvm/lvm.bin.gz")
 
 
 @pytest.fixture
 def lvm_thin() -> Iterator[BinaryIO]:
-    yield from open_file_gz("data/lvm-thin.bin.gz")
+    yield from open_file_gz("data/lvm/lvm-thin.bin.gz")
 
 
 @pytest.fixture
 def lvm_mirror() -> Iterator[list[BinaryIO]]:
-    yield from open_files_gz(["data/lvm-mirror-1.bin.gz", "data/lvm-mirror-2.bin.gz"])
+    yield from open_files_gz(["data/lvm/lvm-mirror-1.bin.gz", "data/lvm/lvm-mirror-2.bin.gz"])
 
 
 @pytest.fixture
@@ -88,6 +88,11 @@ def bsd64() -> Iterator[BinaryIO]:
 @pytest.fixture
 def dm_thin() -> Iterator[list[BinaryIO]]:
     yield from open_files_gz(["data/dm/dm-thin-metadata.bin.gz", "data/dm/dm-thin-data.bin.gz"])
+
+
+@pytest.fixture
+def dm_thin_empty() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(["data/dm/dm-thin-empty-metadata.bin.gz", "data/dm/dm-thin-empty-data.bin.gz"])
 
 
 @pytest.fixture
