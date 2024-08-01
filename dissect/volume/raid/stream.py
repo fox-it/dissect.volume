@@ -8,7 +8,7 @@ from dissect.util.stream import AlignedStream, MappingStream
 from dissect.volume.exceptions import RAIDError
 
 if TYPE_CHECKING:
-    from dissect.volume.raid.raid import PhysicalDisk, VirtualDisk
+    from dissect.volume.raid.raid import DiskMap, PhysicalDisk, VirtualDisk
 
 
 class Level(IntEnum):
@@ -54,13 +54,13 @@ class LinearStream(MappingStream):
     def __init__(self, virtual_disk: VirtualDisk):
         super().__init__()
         self.virtual_disk = virtual_disk
+        self.disk_map: DiskMap = dict(sorted(virtual_disk.disk_map.items()))
 
-        physical_disks: dict[int, tuple[int, PhysicalDisk]] = dict(sorted(virtual_disk.physical_disks.items()))
-        if len(physical_disks) != virtual_disk.num_disks:
+        if len(self.disk_map) != virtual_disk.num_disks:
             raise RAIDError(f"Missing disks in linear RAID set {virtual_disk.uuid} ({virtual_disk.name})")
 
         offset = 0
-        for disk_offset, disk in physical_disks.values():
+        for disk_offset, disk in self.disk_map.values():
             self.add(offset, disk.size, disk.open(), disk_offset)
             offset += disk.size
 
@@ -68,7 +68,7 @@ class LinearStream(MappingStream):
 class Zone(NamedTuple):
     zone_end: int
     dev_start: int
-    devices: list[tuple[int, PhysicalDisk]]
+    devices: DiskMap
 
 
 class RAID0Stream(AlignedStream):
@@ -76,27 +76,25 @@ class RAID0Stream(AlignedStream):
 
     def __init__(self, virtual_disk: VirtualDisk):
         self.virtual_disk = virtual_disk
+        self.disk_map = dict(sorted(self.virtual_disk.disk_map.items()))
 
-        disks = self.virtual_disk.physical_disks
-        if len(disks) != virtual_disk.num_disks:
+        if len(self.disk_map) != virtual_disk.num_disks:
             raise RAIDError(f"Missing disks in RAID0 set {virtual_disk.uuid} ({virtual_disk.name})")
 
         # Determine how many strip zones we need to construct
         # If a RAID0 set consists of devices with different sizes, additional strip zones
         # may exist on the larger devices but not on the smaller ones
         # Reference: create_strip_zones
-        disks: dict[int, tuple[int, PhysicalDisk]] = dict(sorted(disks.items()))
-        rounded_sizes = {}
-
+        rounded_sizes: dict[PhysicalDisk, int] = {}
         stripe_size = virtual_disk.stripe_size
         num_strip_zones = 0
-        for idx1, (_, dev1) in disks.items():
+        for idx1, (_, dev1) in self.disk_map.items():
             rounded_sizes[dev1] = (dev1.size // stripe_size) * stripe_size
 
             has_same_size = False
             # Check if dev1 is unequal in size to the sizes of any of the previous devices
             # If so, this means an extra strip zone is present
-            for idx2, (_, dev2) in disks.items():
+            for idx2, (_, dev2) in self.disk_map.items():
                 if idx1 == idx2:
                     break
 
@@ -109,25 +107,25 @@ class RAID0Stream(AlignedStream):
 
         # Determine the smallest device
         smallest = None
-        for _, dev in disks.values():
+        for _, dev in self.disk_map.values():
             if not smallest or rounded_sizes[dev] < rounded_sizes[smallest]:
                 smallest = dev
 
         # Construct the strip zones
-        zones = [Zone(rounded_sizes[smallest] * len(disks), 0, disks)]
+        zones = [Zone(rounded_sizes[smallest] * len(self.disk_map), 0, self.disk_map)]
 
         cur_zone_end = zones[0].zone_end
         for _ in range(1, num_strip_zones):
-            zone_devices = []
+            zone_devices = {}
             dev_start = rounded_sizes[smallest]
             smallest = None
 
             # Look for the next smallest device, that is: the smallest device that is larger than the "dev_start" device
-            for _, dev in disks.values():
+            for disk_idx, (data_offset, dev) in self.disk_map.items():
                 if rounded_sizes[dev] <= dev_start:
                     continue
 
-                zone_devices.append(dev)
+                zone_devices[disk_idx] = (data_offset, dev)
                 if not smallest or rounded_sizes[dev] < rounded_sizes[smallest]:
                     smallest = dev
 
@@ -192,8 +190,8 @@ class RAID456Stream(AlignedStream):
         self.algorithm = self.virtual_disk.layout
         self.max_degraded = 2 if self.level == 6 else 1
 
-        self.disks = self.virtual_disk.physical_disks
-        if len(self.disks) < self.virtual_disk.num_disks - self.max_degraded:
+        self.disk_map = self.virtual_disk.disk_map
+        if len(self.disk_map) < self.virtual_disk.num_disks - self.max_degraded:
             raise RAIDError(f"Missing disks in RAID{self.level} set {virtual_disk.uuid} ({virtual_disk.name})")
 
         super().__init__(self.virtual_disk.size, self.virtual_disk.stripe_size)
@@ -362,7 +360,7 @@ class RAID456Stream(AlignedStream):
         while length:
             stripe, offset_in_stripe, dd_idx, pd_idx, qd_idx, ddf_layout = self._get_stripe_read_info(offset)
             offset_in_device = stripe * stripe_size + offset_in_stripe
-            dd_start, dd_dev = self.disks[dd_idx]
+            dd_start, dd_dev = self.disk_map[dd_idx]
 
             stripe_remaining = stripe_size - offset_in_stripe
             read_length = min(length, stripe_remaining)
@@ -383,7 +381,7 @@ class RAID10Stream(AlignedStream):
     def __init__(self, virtual_disk: VirtualDisk):
         self.virtual_disk = virtual_disk
         self.raid_disks = self.virtual_disk.num_disks
-        self.devices = virtual_disk.physical_disks
+        self.disk_map = virtual_disk.disk_map
 
         # Reference: setup_geo
         layout = virtual_disk.layout
@@ -420,7 +418,7 @@ class RAID10Stream(AlignedStream):
 
             if self.far_offset:
                 stripe *= self.far_copies
-            device_start, device = self.devices[dev]
+            device_start, device = self.disk_map[dev]
 
             stripe_remaining = stripe_size - offset_in_stripe
             read_length = min(length, stripe_remaining)

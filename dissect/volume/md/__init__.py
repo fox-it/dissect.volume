@@ -1,6 +1,6 @@
-from dissect.volume.md.md import MD, Device
+from dissect.volume.md.md import MD, MDPhysicalDisk
 
 __all__ = [
     "MD",
-    "Device",
+    "MDPhysicalDisk",
 ]

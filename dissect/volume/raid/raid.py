@@ -12,6 +12,9 @@ from dissect.volume.raid.stream import (
     RAID456Stream,
 )
 
+DiskMap = dict[int, tuple[int, "PhysicalDisk"]]
+"""A dict of the structure: {disk_idx: {data_offset: PhysicalDisk}}"""
+
 
 class RAID:
     def __init__(self, configurations: list[Configuration]):
@@ -45,7 +48,7 @@ class VirtualDisk:
         layout: int,
         stripe_size: int,
         num_disks: int,
-        physical_disks: dict[int, tuple[int, PhysicalDisk]],
+        disk_map: DiskMap,
     ):
         self.name = name
         self.uuid = uuid
@@ -54,7 +57,7 @@ class VirtualDisk:
         self.layout = layout
         self.stripe_size = stripe_size
         self.num_disks = num_disks
-        self.physical_disks = physical_disks
+        self.disk_map = disk_map
 
     def open(self) -> BinaryIO:
         """Return a file-like object of the RAID volume in this set."""
@@ -64,7 +67,7 @@ class VirtualDisk:
             return RAID0Stream(self)
         elif self.level == Level.RAID1:
             # Don't really care which mirror to read from, so just open the first disk
-            return self.physical_disks[0][1].open()
+            return self.disk_map[0][1].open()
         elif self.level in (Level.RAID4, Level.RAID5, Level.RAID6):
             return RAID456Stream(self)
         elif self.level == Level.RAID10:
