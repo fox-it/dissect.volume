@@ -193,3 +193,57 @@ def ddf_raid10() -> Iterator[list[BinaryIO]]:
             "data/ddf/ddf-raid10-4.bin.gz",
         ]
     )
+
+
+@pytest.fixture
+def vinum_concat() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(
+        [
+            "data/vinum/vinum-concat_diska.bin.gz",
+            "data/vinum/vinum-concat_diskb.bin.gz",
+        ]
+    )
+
+
+@pytest.fixture
+def vinum_mirror() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(
+        [
+            "data/vinum/vinum-mirror_diska.bin.gz",
+            "data/vinum/vinum-mirror_diskb.bin.gz",
+        ]
+    )
+
+
+@pytest.fixture
+def vinum_raid5() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(
+        [
+            "data/vinum/vinum-raid5_diska.bin.gz",
+            "data/vinum/vinum-raid5_diskb.bin.gz",
+            "data/vinum/vinum-raid5_diskc.bin.gz",
+            "data/vinum/vinum-raid5_diskd.bin.gz",
+        ]
+    )
+
+
+@pytest.fixture
+def vinum_striped() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(
+        [
+            "data/vinum/vinum-striped_diska.bin.gz",
+            "data/vinum/vinum-striped_diskb.bin.gz",
+        ]
+    )
+
+
+@pytest.fixture
+def vinum_stripedmirror() -> Iterator[list[BinaryIO]]:
+    yield from open_files_gz(
+        [
+            "data/vinum/vinum-stripedmirror_diska.bin.gz",
+            "data/vinum/vinum-stripedmirror_diskb.bin.gz",
+            "data/vinum/vinum-stripedmirror_diskc.bin.gz",
+            "data/vinum/vinum-stripedmirror_diskd.bin.gz",
+        ]
+    )
