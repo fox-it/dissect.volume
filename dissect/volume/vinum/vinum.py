@@ -120,7 +120,7 @@ class VinumConfiguration(Configuration):
                         cur_config[new_item.name] = new_item
 
         # plexes_by_name contains all *active* plexes
-        plexes_by_name: ByName[Plex] = dict()
+        plexes_by_name: ByName[Plex] = {}
 
         # plexes_by_volume contains all *active* plexes grouped by the name of
         # the volume they belong to
@@ -245,10 +245,8 @@ class VinumPlexDisk(VirtualDisk):
             raise ValueError(f"Plex {plex.name} has an unsupported RAID level: {plex.org}")
         if (layout := org_to_layout.get(plex.org)) is None:
             raise ValueError(f"Plex {plex.name} has an unsupported RAID level: {plex.org}")
-        if plex.org == PlexOrg.CONCAT:
-            stripe_size = 0  # concatenated disks don't have stripes
-        else:
-            stripe_size = plex.stripesize
+
+        stripe_size = 0 if plex.org == PlexOrg.CONCAT else plex.stripesize  # concatenated disks don't have stripes
 
         size = 0
         sd = sds[0]
@@ -335,10 +333,9 @@ class VinumPhysicalDisk(PhysicalDisk):
 
         super().__init__(fh, c_vinum.GV_DATA_START, size)
 
-    def _read_config(self, config_offset) -> bytes:
+    def _read_config(self, config_offset: int) -> bytes:
         self.fh.seek(config_offset)
-        config = self.fh.read(self.header.config_length)
-        return config
+        return self.fh.read(self.header.config_length)
 
     @cached_property
     def config(self) -> bytes:

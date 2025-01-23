@@ -1,8 +1,12 @@
-from typing import BinaryIO, Optional
+from __future__ import annotations
 
-from dissect.volume.disk.partition import Partition
+from typing import TYPE_CHECKING, BinaryIO
+
 from dissect.volume.disk.schemes import APM, BSD, GPT, MBR
 from dissect.volume.exceptions import DiskError
+
+if TYPE_CHECKING:
+    from dissect.volume.disk.partition import Partition
 
 
 class Disk:
@@ -40,11 +44,11 @@ class Disk:
             else:
                 self.partitions.append(partition)
 
-        if isinstance(self.scheme, MBR) and any([p.type == 0xEE for p in self.partitions]):
+        if isinstance(self.scheme, MBR) and any(p.type == 0xEE for p in self.partitions):
             raise DiskError("Found GPT type partition, but MBR scheme detected. Maybe 4K sector size.")
 
     @property
-    def serial(self) -> Optional[int]:
+    def serial(self) -> int | None:
         if isinstance(self.scheme, MBR):
             return self.scheme.mbr.vol_no
         return None

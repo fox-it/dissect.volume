@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import BinaryIO, Optional
+from typing import BinaryIO
 
 from dissect.util.stream import AlignedStream
 
@@ -18,7 +18,7 @@ class ThinPool:
 
         self.metadata = Metadata(metadata_fh)
 
-    def open(self, device_id: int, size_hint: Optional[int] = None) -> ThinDevice:
+    def open(self, device_id: int, size_hint: int | None = None) -> ThinDevice:
         """Open a thin device on this pool.
 
         No size information is stored in the pool, so it's recommended to provide a size hint.
@@ -55,7 +55,7 @@ class ThinDevice(AlignedStream):
         size_hint: Optional device size hint.
     """
 
-    def __init__(self, pool: ThinPool, device_id: int, size_hint: Optional[int] = None):
+    def __init__(self, pool: ThinPool, device_id: int, size_hint: int | None = None):
         self.pool = pool
         self.device_id = device_id
         self.block_size = self.pool.metadata.data_block_size * SECTOR_SIZE

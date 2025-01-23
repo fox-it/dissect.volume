@@ -4,11 +4,13 @@ import logging
 import os
 import re
 from dataclasses import dataclass
-from datetime import datetime
 from enum import Enum, auto
-from typing import TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from dissect.volume.vinum.c_vinum import c_vinum
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 log = logging.getLogger(__name__)
 log.setLevel(os.getenv("DISSECT_LOG_VINUM", "CRITICAL"))
@@ -75,7 +77,7 @@ class ParseError(Exception):
 
 class BytesDefaultEnum(bytes, Enum):
     @classmethod
-    def _missing_(cls, value):
+    def _missing_(cls, value: bytes) -> Any:
         return cls._default
 
 
@@ -119,10 +121,7 @@ def _parse_size(size: bytes) -> int:
     # Only the first byte after the numerals (and optional minus sign) should
     # be considered.
     postfix = size.lstrip(b"-0123456789")
-    if postfix:
-        numeral = size[: -len(postfix)]
-    else:
-        numeral = size
+    numeral = size[: -len(postfix)] if postfix else size
     unit = postfix[:1]
 
     try:
@@ -195,13 +194,13 @@ def _parse_plex_config(config_time: datetime, tokens: list[bytes]) -> Plex | Non
                     stripesize = _parse_size(next(tokens))
                     # the kernel parser only checks on == 0, but < 0 also seems unreasonable
                     if stripesize <= 0:
-                        raise ParseError(f"Invalid stripesize: {stripesize}")
+                        raise ParseError(f"Invalid stripesize: {stripesize}")  # noqa: TRY301
             elif token == b"vol" or token == b"volume":
                 volume = next(tokens)
             elif token == b"state":
                 state = PlexState(next(tokens))
             else:
-                raise ParseError(f"Unknown token {token}")
+                raise ParseError(f"Unknown token {token}")  # noqa: TRY301
 
             token = next(tokens, None)
 
@@ -249,17 +248,17 @@ def _parse_sd_config(config_time: datetime, tokens: list[bytes]) -> SD | None:
             elif token == b"driveoffset":
                 driveoffset = _parse_size(next(tokens))
                 if driveoffset != 0 and driveoffset < c_vinum.GV_DATA_START:
-                    raise ParseError(f"Invalid driveoffset: {driveoffset}")
+                    raise ParseError(f"Invalid driveoffset: {driveoffset}")  # noqa: TRY301
             elif token == b"plex":
                 plex = next(tokens)
             elif token == b"plexoffset":
                 plexoffset = _parse_size(next(tokens))
                 if plexoffset < 0:
-                    raise ParseError(f"Invalid plexoffset: {plexoffset}")
+                    raise ParseError(f"Invalid plexoffset: {plexoffset}")  # noqa: TRY301
             elif token == b"state":
                 state = SDState(next(tokens))
             else:
-                raise ParseError(f"Unknown token {token}")
+                raise ParseError(f"Unknown token {token}")  # noqa: TRY301
 
             token = next(tokens, None)
 

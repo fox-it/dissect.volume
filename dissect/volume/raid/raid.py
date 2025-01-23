@@ -63,14 +63,13 @@ class VirtualDisk:
         """Return a file-like object of the RAID volume in this set."""
         if self.level == Level.LINEAR:
             return LinearStream(self)
-        elif self.level == Level.RAID0:
+        if self.level == Level.RAID0:
             return RAID0Stream(self)
-        elif self.level == Level.RAID1:
+        if self.level == Level.RAID1:
             # Don't really care which mirror to read from, so just open the first disk
             return self.disk_map[0][1].open()
-        elif self.level in (Level.RAID4, Level.RAID5, Level.RAID6):
+        if self.level in (Level.RAID4, Level.RAID5, Level.RAID6):
             return RAID456Stream(self)
-        elif self.level == Level.RAID10:
+        if self.level == Level.RAID10:
             return RAID10Stream(self)
-        else:
-            raise NotImplementedError(f"Unsupported RAID level: {self.level}")
+        raise NotImplementedError(f"Unsupported RAID level: {self.level}")

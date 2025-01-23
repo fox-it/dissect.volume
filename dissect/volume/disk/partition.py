@@ -1,8 +1,12 @@
-from typing import Any, BinaryIO, Optional, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, BinaryIO
 from uuid import UUID
 
-from dissect.cstruct import Structure
 from dissect.util.stream import RangeStream
+
+if TYPE_CHECKING:
+    from dissect.cstruct import Structure
 
 PARTITION_TYPES = {
     0x00: "Empty",
@@ -180,11 +184,11 @@ class Partition:
         number: int,
         offset: int,
         size: int,
-        vtype: Union[int, UUID],
+        vtype: int | UUID,
         name: str,
-        flags: Optional[int] = None,
-        guid: Optional[UUID] = None,
-        vtype_str: Optional[str] = None,
+        flags: int | None = None,
+        guid: UUID | None = None,
+        vtype_str: str | None = None,
         raw: Structure = None,
     ):
         self.disk = disk

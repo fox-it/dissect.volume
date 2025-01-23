@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import BinaryIO, Optional, Union
+from typing import BinaryIO
 
 from dissect.volume.dm.c_dm import SECTOR_SIZE, c_dm
 
@@ -19,7 +19,7 @@ class BTree:
         self.fh.seek(block * self._block_size_bytes)
         return Node(self.fh.read(self._block_size_bytes))
 
-    def lookup(self, keys: Union[int, list[int]], want_high: bool = False) -> Optional[bytes]:
+    def lookup(self, keys: int | list[int], want_high: bool = False) -> bytes | None:
         keys = [keys] if not isinstance(keys, list) else keys
 
         root = self.root
@@ -35,7 +35,7 @@ class BTree:
 
         return value
 
-    def _lookup(self, root: int, key: int, want_high: bool = False) -> tuple[Optional[int], Optional[bytes]]:
+    def _lookup(self, root: int, key: int, want_high: bool = False) -> tuple[int | None, bytes | None]:
         block = root
         while True:
             node = self._read_node(block)

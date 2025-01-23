@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import BinaryIO
 
 import pytest
@@ -7,7 +9,7 @@ from dissect.volume.raid.stream import RAID0Stream
 
 
 @pytest.mark.parametrize(
-    "fixture, name, level, size, num_test_blocks",
+    ("fixture", "name", "level", "size", "num_test_blocks"),
     [
         ("md_linear", "fedora:linear", -1, 0x200000, 512),
         ("md_raid0", "fedora:raid0", 0, 0x500000, 512),

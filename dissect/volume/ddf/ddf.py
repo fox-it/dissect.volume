@@ -68,7 +68,7 @@ class DDFConfiguration(Configuration):
                 if pds != 0xFFFFFFFF:
                     i += 1
 
-        virtual_disks = [DDFVirtualDisk(vdcr_map[guid], vde_map[guid], vd_map[guid]) for guid in vd_map.keys()]
+        virtual_disks = [DDFVirtualDisk(vdcr_map[guid], vde_map[guid], vd_map[guid]) for guid in vd_map]
         super().__init__(physical_disks, virtual_disks)
 
 
@@ -84,7 +84,7 @@ class DDFVirtualDisk(VirtualDisk):
         self.disks = disks
 
         if (block_size := self.vdcr.block_size) == 0xFFFF:
-            block_size = list(disks.values())[0][1].block_size
+            block_size = next(iter(disks.values()))[1].block_size
 
         level, layout, num_disks = _convert_raid_layout(
             vdcr.primary_raid_level,

@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import pytest
 
 from dissect.volume.ddf.ddf import DDF
 
 
 @pytest.mark.parametrize(
-    "fixture, name, level, size, num_test_blocks",
+    ("fixture", "name", "level", "size", "num_test_blocks"),
     [
         ("ddf_raid0", "ddf-raid0", 0, 0xC00000, 3072),
         ("ddf_raid1", "ddf-raid1", 1, 0x400000, 512),

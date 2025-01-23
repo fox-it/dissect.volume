@@ -4,12 +4,15 @@ import ast
 import re
 from bisect import bisect_right
 from functools import cached_property
-from typing import Any, BinaryIO, Iterator, Optional
+from typing import TYPE_CHECKING, Any, BinaryIO
 
 from dissect.util.stream import RunlistStream
 
 from dissect.volume.exceptions import LVM2Error
 from dissect.volume.lvm.c_lvm2 import LABEL_SCAN_SECTORS, SECTOR_SIZE, c_lvm
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 class LVM2Device:
@@ -53,7 +56,7 @@ class LVM2Device:
         return f"<LVMDevice id={self.id}, size={self.size:#x}>"
 
     @cached_property
-    def metadata(self) -> Optional[dict]:
+    def metadata(self) -> dict | None:
         if not self._metadata_areas:
             return None
 
@@ -85,10 +88,10 @@ class LVM2Device:
         return b"".join(r)
 
     def open(self) -> BinaryIO:
-        runlist = []
-
-        for area in self._data_area_descriptors:
-            runlist.append((area.offset // SECTOR_SIZE, (area.size or self.size) // SECTOR_SIZE))
+        runlist = [
+            (area.offset // SECTOR_SIZE, (area.size or self.size) // SECTOR_SIZE)
+            for area in self._data_area_descriptors
+        ]
 
         return RunlistStream(self.fh, runlist, self.size, SECTOR_SIZE)
 
@@ -111,7 +114,7 @@ def parse_metadata(string: str) -> dict:
     current = root
     parents = {}
 
-    s = re.sub(r"(#[^\"]+?)$", "", string, flags=re.M)
+    s = re.sub(r"(#[^\"]+?)$", "", string, flags=re.MULTILINE)
 
     it = iter(s.split("\n"))
     for line in it:

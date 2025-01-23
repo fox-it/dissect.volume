@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime
-from typing import BinaryIO, Optional, Union
+from typing import TYPE_CHECKING, BinaryIO
 
 from dissect.util import ts
 
 from dissect.volume.exceptions import LVM2Error
 from dissect.volume.lvm.metadata import VolumeGroup
 from dissect.volume.lvm.physical import LVM2Device
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 log = logging.getLogger(__name__)
 log.setLevel(os.getenv("DISSECT_LOG_LVM", "CRITICAL"))
@@ -18,7 +20,7 @@ log.setLevel(os.getenv("DISSECT_LOG_LVM", "CRITICAL"))
 class LVM2:
     """Logical Volume Manager"""
 
-    def __init__(self, fh: Union[list[Union[BinaryIO, LVM2Device]], Union[BinaryIO, LVM2Device]]):
+    def __init__(self, fh: list[BinaryIO | LVM2Device] | BinaryIO | LVM2Device):
         self.fh = [fh] if not isinstance(fh, list) else fh
         if not self.fh:
             raise ValueError("At least one file-like object is required")
@@ -29,11 +31,11 @@ class LVM2:
         self.metadata = devices[0].metadata
         self.contents: str = self.metadata["contents"]
         self.version: int = self.metadata["version"]
-        self.description: Optional[str] = self.metadata.get("description")
-        self.creation_host: Optional[str] = self.metadata.get("creation_host")
-        self.creation_time: Optional[datetime] = None
+        self.description: str | None = self.metadata.get("description")
+        self.creation_host: str | None = self.metadata.get("creation_host")
+        self.creation_time: datetime | None = None
         if creation_time := self.metadata.get("creation_time"):
-            self.creation_time: Optional[datetime] = ts.from_unix(creation_time)
+            self.creation_time: datetime | None = ts.from_unix(creation_time)
 
         vg = [VolumeGroup.from_dict(value, name=key) for key, value in self.metadata.items() if isinstance(value, dict)]
         if len(vg) != 1:

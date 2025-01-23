@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import datetime
 import io
 import operator
 import struct
@@ -14,6 +13,8 @@ from dissect.volume.raid.raid import RAID, Configuration, PhysicalDisk, VirtualD
 from dissect.volume.raid.stream import Level
 
 if TYPE_CHECKING:
+    import datetime
+
     MDPhysicalDiskDescriptor = BinaryIO | "MDPhysicalDisk"
 
 
@@ -146,10 +147,7 @@ def find_super_block(fh: BinaryIO) -> tuple[int, int, int]:
     # Super block can start at a couple of places, depending on version
     # Just try them all until we find one
 
-    if hasattr(fh, "size"):
-        size = fh.size
-    else:
-        size = fh.seek(0, io.SEEK_END)
+    size = fh.size if hasattr(fh, "size") else fh.seek(0, io.SEEK_END)
     size //= SECTOR_SIZE
 
     possible_offsets = [

@@ -1,9 +1,14 @@
-from typing import BinaryIO, Iterator
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, BinaryIO
 
 from dissect.cstruct import cstruct
 
 from dissect.volume.disk.partition import Partition
 from dissect.volume.exceptions import DiskError
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 apm_def = """
 struct partition_entry {
@@ -54,10 +59,7 @@ class APM:
     def _partitions(self) -> Iterator[Partition]:
         self.fh.seek(self._partitions_offset)
         for i in range(self.apm.partition_count):
-            if i == 0:
-                p = self.apm
-            else:
-                p = c_apm.partition_entry(self.fh)
+            p = self.apm if i == 0 else c_apm.partition_entry(self.fh)
 
             yield Partition(
                 disk=self,

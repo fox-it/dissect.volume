@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from io import BytesIO
 from typing import BinaryIO
@@ -163,12 +165,10 @@ def test_vinum(
         # fake disk map
         disk_map = {0: (0, vd)}
 
-    check_idx = 0
-    for idx_i, (disk_offset_i, vd_i) in disk_map.items():
+    for check_idx, (idx_i, (disk_offset_i, vd_i)) in enumerate(disk_map.items()):
         # as the indexes in a disk_map for a mirror set are artificial, they
         # should increase monotonously from 0.
         assert idx_i == check_idx
-        check_idx += 1
 
         if is_mirror:
             # these are always the same for any mirror type and virtual disk in the mirror set
@@ -219,7 +219,7 @@ def test_vinum(
         (0x56494E554D2D2D00, False),
     ],
 )
-def test_vinum_physical_disk(magic, active):
+def test_vinum_physical_disk(magic: int, active: bool) -> None:
     header = c_vinum.header()
     header.magic = magic
 
@@ -229,10 +229,10 @@ def test_vinum_physical_disk(magic, active):
     assert vpd.active == active
 
 
-def test_vinum_physical_disk_invalid():
+def test_vinum_physical_disk_invalid() -> None:
     header = c_vinum.header()
     header.magic = 0xDEADCAFEDEADCAFE
 
     fake_disk = BytesIO(b"\x00" * c_vinum.GV_HDR_OFFSET + bytes(header))
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="File-like object is not a Vinum device"):
         VinumPhysicalDisk(fake_disk)
