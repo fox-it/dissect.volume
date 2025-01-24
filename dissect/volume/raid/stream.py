@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import TYPE_CHECKING, NamedTuple, Optional
+from typing import TYPE_CHECKING, NamedTuple
 
 from dissect.util.stream import AlignedStream, MappingStream
 
@@ -140,7 +140,7 @@ class RAID0Stream(AlignedStream):
 
         super().__init__(self.virtual_disk.size)
 
-    def _find_zone(self, offset: int) -> Optional[tuple[Zone, int]]:
+    def _find_zone(self, offset: int) -> tuple[Zone, int] | None:
         """Return the zone and the offset within that zone a given ``offset`` is in."""
         for i, zone in enumerate(self.zones):
             if offset < zone.zone_end:
@@ -196,7 +196,7 @@ class RAID456Stream(AlignedStream):
 
         super().__init__(self.virtual_disk.size, self.virtual_disk.stripe_size)
 
-    def _get_stripe_read_info(self, offset: int) -> tuple[int, int, int, int, Optional[int]]:
+    def _get_stripe_read_info(self, offset: int) -> tuple[int, int, int, int, int | None]:
         """Calculate the stripe, offset in the stripe, data disk, parity disk and "Q" parity disk for a given sector."""
 
         # Reference: raid5_compute_sector

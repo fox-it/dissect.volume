@@ -2,6 +2,8 @@
 #
 # This file is still a WIP
 
+from __future__ import annotations
+
 import logging
 import os
 

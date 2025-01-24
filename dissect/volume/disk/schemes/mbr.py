@@ -1,9 +1,14 @@
-from typing import BinaryIO, Iterator, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, BinaryIO
 
 from dissect.cstruct import cstruct
 
 from dissect.volume.disk.partition import Partition
 from dissect.volume.exceptions import DiskError
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 mbr_def = """
 typedef struct part_s {
@@ -52,7 +57,7 @@ class MBR:
         self.partitions: list[Partition] = list(self._partitions(self.mbr, self.offset))
 
     def _partitions(
-        self, mbr: c_mbr.mbr_s, offset: int, num_start: int = 0, ebr_offset: Optional[int] = None
+        self, mbr: c_mbr.mbr_s, offset: int, num_start: int = 0, ebr_offset: int | None = None
     ) -> Iterator[Partition]:
         for num, partition in enumerate(mbr.part):
             if partition.type == 0x00:

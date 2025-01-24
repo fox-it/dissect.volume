@@ -4,6 +4,6 @@ from dissect.volume.exceptions import DiskError
 
 __all__ = [
     "Disk",
-    "Partition",
     "DiskError",
+    "Partition",
 ]

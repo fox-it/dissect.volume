@@ -1,14 +1,18 @@
 # Reference:
 # - https://github.com/freebsd/freebsd-src/blob/main/sys/geom/part/g_part_bsd.c
+from __future__ import annotations
 
 import io
-from typing import BinaryIO, Iterator
+from typing import TYPE_CHECKING, BinaryIO
 from uuid import UUID
 
 from dissect.cstruct import cstruct
 
 from dissect.volume.disk.partition import Partition
 from dissect.volume.exceptions import DiskError
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 bsd_def = """
 /* The disk magic number */
@@ -270,7 +274,7 @@ FS_NAMES = {
 class BSD:
     """BSD disklabel."""
 
-    TYPES = [
+    TYPES = (
         # MBR FreeBSD
         0xA5,
         # MBR OpenBSD
@@ -285,7 +289,7 @@ class BSD:
         UUID("3D48CE54-1D16-11DC-8696-01301BB8A9F5").bytes_le,
         # GPT FreeBSD disklabel
         UUID("516E7CB4-6ECF-11D6-8FF8-00022D09712B").bytes_le,
-    ]
+    )
 
     def __init__(self, fh: BinaryIO, sector_size: int = 512):
         self.fh = fh
@@ -313,8 +317,7 @@ class BSD:
             self.type = 64
         else:
             raise DiskError(
-                f"Invalid BSD disklabel magic, expected {c_bsd.BSD_MAGIC:#x} or {c_bsd.DISKMAGIC64:#x}, "
-                f"got {magic:#x}."
+                f"Invalid BSD disklabel magic, expected {c_bsd.BSD_MAGIC:#x} or {c_bsd.DISKMAGIC64:#x}, got {magic:#x}."
             )
 
         self._partitions_offset = offset + len(self.disklabel)

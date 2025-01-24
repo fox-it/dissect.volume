@@ -1,23 +1,28 @@
+from __future__ import annotations
+
 import contextlib
 import gzip
-import os
-from typing import IO, BinaryIO, Iterator
+from pathlib import Path
+from typing import IO, TYPE_CHECKING, BinaryIO
 
 import pytest
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
-def absolute_path(filename: str) -> str:
-    return os.path.join(os.path.dirname(__file__), filename)
+
+def absolute_path(filename: str) -> Path:
+    return Path(__file__).parent / filename
 
 
 def open_file(name: str, mode: str = "rb") -> Iterator[IO]:
-    with open(absolute_path(name), mode) as f:
-        yield f
+    with absolute_path(name).open(mode) as fh:
+        yield fh
 
 
 def open_file_gz(name: str, mode: str = "rb") -> Iterator[IO]:
-    with gzip.GzipFile(absolute_path(name), mode) as f:
-        yield f
+    with gzip.GzipFile(absolute_path(name), mode) as fh:
+        yield fh
 
 
 def open_files_gz(names: list[str], mode: str = "rb") -> Iterator[list[gzip.GzipFile]]:

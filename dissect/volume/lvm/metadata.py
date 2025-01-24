@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime  # noqa: TC003
 from functools import cache
-from typing import BinaryIO, Optional, Union, get_args, get_origin, get_type_hints
+from typing import BinaryIO, Optional, get_args, get_origin, get_type_hints
+
+if sys.version_info >= (3, 10):
+    from types import UnionType  # novermin
+else:
+    # Python 3.9
+    from typing import Union as UnionType
 
 from dissect.util import ts
 from dissect.util.stream import MappingStream
@@ -11,25 +18,25 @@ from dissect.util.stream import MappingStream
 from dissect.volume.dm.thin import ThinPool
 from dissect.volume.exceptions import LVM2Error
 from dissect.volume.lvm.c_lvm2 import SECTOR_SIZE
-from dissect.volume.lvm.physical import LVM2Device
+from dissect.volume.lvm.physical import LVM2Device  # noqa: TC001
 
 
 @dataclass(init=False)
 class MetaBase:
     @classmethod
-    def from_dict(cls, obj: dict, name: Optional[str] = None, parent: Optional[MetaBase] = None) -> MetaBase:
+    def from_dict(cls, obj: dict, name: str | None = None, parent: MetaBase | None = None) -> MetaBase:
         inst = cls()
         inst._from_dict(obj, name=name, parent=parent)
         return inst
 
-    def _from_dict(self, obj: dict, name: Optional[str] = None, parent: Optional[MetaBase] = None) -> None:
+    def _from_dict(self, obj: dict, name: str | None = None, parent: MetaBase | None = None) -> None:
         for field_name, field_type in get_type_hints(self.__class__).items():
             if field_name.startswith("_"):
                 continue
 
             type_ = get_origin(field_type)
 
-            if type_ is Union and field_type == Optional[field_type]:
+            if type_ is UnionType and field_type == Optional[field_type]:
                 value = obj.get(field_name)
                 field_type = get_args(field_type)[0]
                 type_ = get_origin(field_type)
@@ -54,15 +61,15 @@ class VolumeGroup(MetaBase):
     physical_volumes: dict[str, PhysicalVolume]
     logical_volumes: dict[str, LogicalVolume]
 
-    system_id: Optional[str]
-    allocation_policy: Optional[str]
-    profile: Optional[str]
-    metadata_copies: Optional[int]
-    tags: Optional[list[str]]
-    historical_logical_volumes: Optional[dict[str, HistoricalLogicalVolume]]
-    format: Optional[str]
-    lock_type: Optional[str]
-    lock_args: Optional[str]
+    system_id: str | None
+    allocation_policy: str | None
+    profile: str | None
+    metadata_copies: int | None
+    tags: list[str] | None
+    historical_logical_volumes: dict[str, HistoricalLogicalVolume] | None
+    format: str | None
+    lock_type: str | None
+    lock_args: str | None
 
     # Internal fields
     _name: str
@@ -86,7 +93,7 @@ class VolumeGroup(MetaBase):
         for pv in self.physical_volumes.values():
             pv._dev = devices.get(pv.id.replace("-", ""))
 
-    def _from_dict(self, obj: dict, name: Optional[str] = None, parent: Optional[MetaBase] = None) -> None:
+    def _from_dict(self, obj: dict, name: str | None = None, parent: MetaBase | None = None) -> None:
         super()._from_dict(obj, name=name, parent=parent)
         self._name = name
 
@@ -98,18 +105,18 @@ class PhysicalVolume(MetaBase):
     pe_start: int
     pe_count: int
 
-    dev_size: Optional[int]
-    device: Optional[str]
-    device_id: Optional[str]
-    device_id_type: Optional[str]
-    ba_start: Optional[int]
-    ba_size: Optional[int]
-    tags: Optional[list[str]]
+    dev_size: int | None
+    device: str | None
+    device_id: str | None
+    device_id_type: str | None
+    ba_start: int | None
+    ba_size: int | None
+    tags: list[str] | None
 
     # Internal fields
     _name: str
     _volume_group: VolumeGroup
-    _dev: Optional[LVM2Device]
+    _dev: LVM2Device | None
 
     def __repr__(self) -> str:
         return f"<PhysicalVolume name={self.name} id={self.id}>"
@@ -127,10 +134,10 @@ class PhysicalVolume(MetaBase):
         return self._volume_group
 
     @property
-    def dev(self) -> Optional[LVM2Device]:
+    def dev(self) -> LVM2Device | None:
         return self._dev
 
-    def _from_dict(self, obj: dict, name: Optional[str] = None, parent: Optional[MetaBase] = None) -> None:
+    def _from_dict(self, obj: dict, name: str | None = None, parent: MetaBase | None = None) -> None:
         super()._from_dict(obj, name=name, parent=parent)
         self._name = name
         self._volume_group = parent
@@ -143,13 +150,13 @@ class LogicalVolume(MetaBase):
     flags: list[str]
     segment_count: int
 
-    creation_time: Optional[datetime]
-    creation_host: Optional[str]
-    lock_args: Optional[str]
-    allocation_policy: Optional[str]
-    profile: Optional[str]
-    read_ahead: Optional[int]
-    tags: Optional[list[str]]
+    creation_time: datetime | None
+    creation_host: str | None
+    lock_args: str | None
+    allocation_policy: str | None
+    profile: str | None
+    read_ahead: int | None
+    tags: list[str] | None
 
     # Internal fields
     _name: str
@@ -180,7 +187,7 @@ class LogicalVolume(MetaBase):
         return "VISIBLE" in self.status
 
     @property
-    def type(self) -> Optional[str]:
+    def type(self) -> str | None:
         return self.segments[0].type if len(self.segments) else None
 
     def open(self) -> BinaryIO:
@@ -192,7 +199,7 @@ class LogicalVolume(MetaBase):
             stream.add(offset, size, segment.open())
         return stream
 
-    def _from_dict(self, obj: dict, name: Optional[str] = None, parent: Optional[MetaBase] = None) -> None:
+    def _from_dict(self, obj: dict, name: str | None = None, parent: MetaBase | None = None) -> None:
         super()._from_dict(obj, name=name, parent=parent)
         self._name = name
         self._volume_group = parent
@@ -202,11 +209,11 @@ class LogicalVolume(MetaBase):
 @dataclass(init=False)
 class HistoricalLogicalVolume(MetaBase):
     id: str
-    name: Optional[str]
-    creation_time: Optional[datetime]
-    removal_time: Optional[datetime]
-    origin: Optional[str]
-    descendants: Optional[list[str]]
+    name: str | None
+    creation_time: datetime | None
+    removal_time: datetime | None
+    origin: str | None
+    descendants: list[str] | None
 
     # Internal fields
     _volume_group: VolumeGroup
@@ -222,7 +229,7 @@ class HistoricalLogicalVolume(MetaBase):
     def volume_group(self) -> VolumeGroup:
         return self._volume_group
 
-    def _from_dict(self, obj: dict, name: Optional[str] = None, parent: Optional[MetaBase] = None) -> None:
+    def _from_dict(self, obj: dict, name: str | None = None, parent: MetaBase | None = None) -> None:
         super()._from_dict(obj, name=name, parent=parent)
         self.name = self.name or name
         self._volume_group = parent
@@ -240,9 +247,9 @@ class Segment(MetaBase):
     extent_count: int
     type: str
 
-    reshape_count: Optional[int]
-    data_copies: Optional[int]
-    tags: Optional[list[str]]
+    reshape_count: int | None
+    data_copies: int | None
+    tags: list[str] | None
 
     # Internal fields
     _name: str
@@ -275,7 +282,7 @@ class Segment(MetaBase):
         raise NotImplementedError(f"{self.__class__.__name__} is not implemented yet")
 
     @classmethod
-    def from_dict(cls, obj: dict, name: Optional[str] = None, parent: Optional[MetaBase] = None) -> Segment:
+    def from_dict(cls, obj: dict, name: str | None = None, parent: MetaBase | None = None) -> Segment:
         SEGMENT_CLASS_MAP = {
             "linear": StripedSegment,
             "striped": StripedSegment,
@@ -319,7 +326,7 @@ class Segment(MetaBase):
         type = obj["type"].split("+", 1)[0]
         return super(Segment, SEGMENT_CLASS_MAP.get(type, Segment)).from_dict(obj, name=name, parent=parent)
 
-    def _from_dict(self, obj: dict, name: Optional[str] = None, parent: Optional[MetaBase] = None) -> None:
+    def _from_dict(self, obj: dict, name: str | None = None, parent: MetaBase | None = None) -> None:
         super()._from_dict(obj, name=name, parent=parent)
         self.type, *self._flags = self.type.split("+")
         self._name = name
@@ -329,7 +336,7 @@ class Segment(MetaBase):
 @dataclass(init=False)
 class StripedSegment(Segment):
     stripe_count: int
-    stripe_size: Optional[int]
+    stripe_size: int | None
     stripes: list[tuple[str, int]]
 
     def open(self) -> BinaryIO:
@@ -358,7 +365,7 @@ class StripedSegment(Segment):
 
         return stream
 
-    def _from_dict(self, obj: dict, name: Optional[str] = None, parent: Optional[MetaBase] = None) -> None:
+    def _from_dict(self, obj: dict, name: str | None = None, parent: MetaBase | None = None) -> None:
         super()._from_dict(obj, name=name, parent=parent)
         self.stripes = [tuple(self.stripes[i : i + 2]) for i in range(0, len(self.stripes), 2)]
 
@@ -367,10 +374,10 @@ class StripedSegment(Segment):
 class MirrorSegment(Segment):
     mirror_count: int
 
-    extents_moved: Optional[int]
-    region_size: Optional[int]
-    mirror_log: Optional[str]
-    mirrors: Optional[list[tuple[str, int]]]
+    extents_moved: int | None
+    region_size: int | None
+    mirror_log: str | None
+    mirrors: list[tuple[str, int]] | None
 
     def open(self) -> BinaryIO:
         # Just open the first mirror we can
@@ -378,12 +385,12 @@ class MirrorSegment(Segment):
             try:
                 lv = self._logical_volume._volume_group.logical_volumes[lv_name]
                 return lv.open()
-            except Exception:
+            except Exception:  # noqa: PERF203
                 pass
         else:
             raise LVM2Error("No mirrors available")
 
-    def _from_dict(self, obj: dict, name: Optional[str] = None, parent: Optional[MetaBase] = None) -> None:
+    def _from_dict(self, obj: dict, name: str | None = None, parent: MetaBase | None = None) -> None:
         super()._from_dict(obj, name=name, parent=parent)
 
         if self.mirrors:
@@ -394,9 +401,9 @@ class MirrorSegment(Segment):
 class SnapshotSegment(Segment):
     chunk_size: int
 
-    merging_store: Optional[str]
-    cow_store: Optional[str]
-    origin: Optional[str]
+    merging_store: str | None
+    cow_store: str | None
+    origin: str | None
 
 
 @dataclass(init=False)
@@ -404,10 +411,10 @@ class ThinSegment(Segment):
     thin_pool: str
     transaction_id: int
 
-    origin: Optional[str]
-    merge: Optional[str]
-    device_id: Optional[int]
-    external_origin: Optional[str]
+    origin: str | None
+    merge: str | None
+    device_id: int | None
+    external_origin: str | None
 
     def open(self) -> BinaryIO:
         extent_size = self._logical_volume._volume_group.extent_size * SECTOR_SIZE
@@ -425,9 +432,9 @@ class ThinPoolSegment(Segment):
     transaction_id: int
     chunk_size: int
 
-    discards: Optional[str]
-    zero_new_blocks: Optional[int]
-    crop_metadata: Optional[int]
+    discards: str | None
+    zero_new_blocks: int | None
+    crop_metadata: int | None
 
     def __init__(self):
         self.open_pool = cache(self.open_pool)
@@ -445,18 +452,18 @@ class CacheSegment(Segment):
     cache_pool: str
     origin: str
 
-    cleaner: Optional[int]
-    chunk_size: Optional[int]
-    cache_mode: Optional[str]
-    policy: Optional[str]
-    policy_settings: Optional[dict[str, int]]
-    metadata_format: Optional[int]
-    metadata_start: Optional[int]
-    metadata_len: Optional[int]
-    data_start: Optional[int]
-    data_len: Optional[int]
-    metadata_id: Optional[str]
-    data_id: Optional[str]
+    cleaner: int | None
+    chunk_size: int | None
+    cache_mode: str | None
+    policy: str | None
+    policy_settings: dict[str, int] | None
+    metadata_format: int | None
+    metadata_start: int | None
+    metadata_len: int | None
+    data_start: int | None
+    data_len: int | None
+    metadata_id: str | None
+    data_id: str | None
 
 
 @dataclass(init=False)
@@ -464,11 +471,11 @@ class CachePoolSegment(Segment):
     data: str
     metadata: str
 
-    metadata_format: Optional[int]
-    chunk_size: Optional[int]
-    cache_mode: Optional[str]
-    policy: Optional[str]
-    policy_settings: Optional[dict[str, int]]
+    metadata_format: int | None
+    chunk_size: int | None
+    cache_mode: str | None
+    policy: str | None
+    policy_settings: dict[str, int] | None
 
 
 @dataclass(init=False)
@@ -477,19 +484,19 @@ class WriteCacheSegment(Segment):
     writecache: str
     writecache_block_size: int
 
-    high_watermark: Optional[int]
-    low_watermark: Optional[int]
-    writeback_jobs: Optional[int]
-    autocommit_blocks: Optional[int]
-    autocommit_time: Optional[int]
-    fua: Optional[int]
-    nofua: Optional[int]
-    cleaner: Optional[int]
-    max_age: Optional[int]
-    metadata_only: Optional[int]
-    pause_writeback: Optional[int]
-    writecache_setting_key: Optional[str]
-    writecache_setting_val: Optional[str]
+    high_watermark: int | None
+    low_watermark: int | None
+    writeback_jobs: int | None
+    autocommit_blocks: int | None
+    autocommit_time: int | None
+    fua: int | None
+    nofua: int | None
+    cleaner: int | None
+    max_age: int | None
+    metadata_only: int | None
+    pause_writeback: int | None
+    writecache_setting_key: str | None
+    writecache_setting_val: str | None
 
 
 @dataclass(init=False)
@@ -501,15 +508,15 @@ class IntegritySegment(Segment):
     block_size: int
     internal_hash: str
 
-    meta_dev: Optional[str]
-    recalculate: Optional[int]
-    journal_sectors: Optional[int]
-    interleave_sectors: Optional[int]
-    buffer_sectors: Optional[int]
-    journal_watermark: Optional[int]
-    commit_time: Optional[int]
-    bitmap_flush_interval: Optional[int]
-    sectors_per_bit: Optional[int]
+    meta_dev: str | None
+    recalculate: int | None
+    journal_sectors: int | None
+    interleave_sectors: int | None
+    buffer_sectors: int | None
+    journal_watermark: int | None
+    commit_time: int | None
+    bitmap_flush_interval: int | None
+    sectors_per_bit: int | None
 
 
 @dataclass(init=False)
@@ -556,7 +563,7 @@ class VdoPoolSegment(Segment):
     logical_threads: int
     physical_threads: int
 
-    write_policy: Optional[str]
+    write_policy: str | None
 
 
 @dataclass(init=False)
@@ -569,13 +576,24 @@ class RAIDSegment(Segment):
     min_recovery_rate: int
     max_recovery_rate: int
 
-    data_copies: Optional[int]
-    data_offset: Optional[int]
-    raids: Optional[list[str]]
-    raid0_lvs: Optional[list[str]]
+    data_copies: int | None
+    data_offset: int | None
+    raids: list[str] | None
+    raid0_lvs: list[str] | None
 
-    def _from_dict(self, obj: dict, name: Optional[str] = None, parent: Optional[MetaBase] = None) -> None:
+    def _from_dict(self, obj: dict, name: str | None = None, parent: MetaBase | None = None) -> None:
         super()._from_dict(obj, name=name, parent=parent)
 
         if self.raids:
             self.raids = [tuple(self.raids[i : i + 2]) for i in range(0, len(self.raids), 2)]
+
+
+# Backward compatibility with Python 3.9
+if sys.version_info < (3, 10):
+    items = list(globals().values())
+    for obj in items:
+        if isinstance(obj, type) and issubclass(obj, MetaBase) and hasattr(obj, "__annotations__"):
+            for k, v in obj.__annotations__.items():
+                if isinstance(v, str) and "|" in v:
+                    # Because we import Union as UnionType
+                    obj.__annotations__[k] = f"UnionType[{v.replace(' | ', ', ')}]"

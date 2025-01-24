@@ -1,10 +1,15 @@
-from typing import BinaryIO, Iterator
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, BinaryIO
 
 from dissect.cstruct import cstruct
 
 from dissect.volume.disk.partition import Partition
 from dissect.volume.disk.schemes.mbr import MBR
 from dissect.volume.exceptions import DiskError
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 gpt_def = """
 // http://en.wikipedia.org/wiki/GUID_Partition_Table

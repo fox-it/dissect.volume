@@ -1,11 +1,14 @@
 # This file is still a WIP
+from __future__ import annotations
 
 import logging
 import os
 import uuid
 from collections import defaultdict
+from functools import cached_property
+from typing import BinaryIO
 
-from dissect.cstruct import cstruct
+from dissect.cstruct import Structure, cstruct
 from dissect.util.stream import AlignedStream
 
 from dissect.volume.exceptions import Error
@@ -163,7 +166,7 @@ STORE_RANGELIST_ENTRY_SIZE = 24
 
 
 class VSS:
-    def __init__(self, fh):
+    def __init__(self, fh: BinaryIO):
         self.fh = fh
 
         fh.seek(VOLUME_HEADER_OFFSET)
@@ -178,22 +181,22 @@ class VSS:
 
         self.catalog = Catalog(self, self.header.catalog_offset)
 
-    @property
-    def volume_identifier(self):
-        return uuid.UUID(bytes_le=self.header.volume_identifier)
-
-    @property
-    def store_volume_identifier(self):
-        return uuid.UUID(bytes_le=self.header.store_volume_identifier)
-
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<VSS volume_identifier={self.volume_identifier} store_volume_identifier={self.store_volume_identifier}>"
         )
 
+    @property
+    def volume_identifier(self) -> uuid.UUID:
+        return uuid.UUID(bytes_le=self.header.volume_identifier)
+
+    @property
+    def store_volume_identifier(self) -> uuid.UUID:
+        return uuid.UUID(bytes_le=self.header.store_volume_identifier)
+
 
 class Catalog:
-    def __init__(self, vss, offset):
+    def __init__(self, vss: VSS, offset: int):
         self.vss = vss
         self.fh = vss.fh
         self.header, data = read_block(vss.fh, offset, c_vss.catalog_header)
@@ -236,7 +239,7 @@ class Catalog:
                 prev_store.next_store = store
             prev_store = store
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Catalog stores={len(self.stores)}>"
 
 
@@ -244,7 +247,7 @@ DEBUG = False
 
 
 class Store:
-    def __init__(self, catalog, descriptors):
+    def __init__(self, catalog: Catalog, descriptors: list):
         self.catalog = catalog
         self.fh = catalog.fh
         self.descriptors = descriptors
@@ -283,43 +286,31 @@ class Store:
         self._bitmap = None
         self._previous_bitmap = None
 
-    def open(self):
+    def open(self) -> StoreStream:
         return StoreStream(self)
 
-    @property
-    def block_list(self):
-        if not self._block_list:
-            self._block_list = BlockList(self, self.desc3.store_block_list_offset)
-        return self._block_list
+    @cached_property
+    def block_list(self) -> BlockList:
+        return BlockList(self, self.desc3.store_block_list_offset)
 
-    @property
-    def range_list(self):
-        # Unused
-        if not self._range_list:
-            self._range_list = RangeList(self, self.desc3.store_range_list_offset)
-        return self._range_list
+    @cached_property
+    def range_list(self) -> RangeList:
+        return RangeList(self, self.desc3.store_range_list_offset)
 
-    @property
-    def bitmap(self):
-        if not self._bitmap:
-            self._bitmap = StoreBitmap(self, self.desc3.store_bitmap_offset)
-        return self._bitmap
+    @cached_property
+    def bitmap(self) -> StoreBitmap:
+        return StoreBitmap(self, self.desc3.store_bitmap_offset)
 
-    @property
-    def previous_bitmap(self):
-        if not self._previous_bitmap:
-            self._previous_bitmap = StoreBitmap(self, self.desc3.store_previous_bitmap_offset)
-        return self._previous_bitmap
+    @cached_property
+    def previous_bitmap(self) -> StoreBitmap:
+        return StoreBitmap(self, self.desc3.store_previous_bitmap_offset)
 
-    def read_block(self, block, active_store=None):
+    def read_block(self, block: int, active_store: Store | None = None) -> bytes:
         active_store = active_store or self
 
         buf = None
         descriptor = self.block_list.map.map.get(block)
         if DEBUG:
-            import ipdb
-
-            ipdb.set_trace()
             print(block, descriptor)
         # if descriptor:
         #     import ipdb; ipdb.set_trace()
@@ -361,10 +352,7 @@ class Store:
         if not buf:
             print("booboo")
             print("Descriptor", descriptor)
-            import ipdb
-
-            ipdb.set_trace()
-            raise Exception()
+            raise ValueError("Error reading block")
 
         if descriptor and active_store is self and (descriptor.is_overlay or descriptor.overlay):
             # print("overlaying data")
@@ -441,11 +429,11 @@ class Store:
 
 
 class StoreStream(AlignedStream):
-    def __init__(self, store):
+    def __init__(self, store: Store):
         self.store = store
         super().__init__(size=store.size, align=BLOCK_SIZE)
 
-    def _read(self, offset, length):
+    def _read(self, offset: int, length: int) -> bytes:
         r = []
         blockidx = offset // BLOCK_SIZE
 
@@ -458,7 +446,7 @@ class StoreStream(AlignedStream):
 
 
 class BlockList:
-    def __init__(self, store, offset):
+    def __init__(self, store: Store, offset: int):
         self.store = store
         self.offset = offset
 
@@ -486,7 +474,7 @@ class BlockList:
 
 
 class RangeList:
-    def __init__(self, store, offset):
+    def __init__(self, store: Store, offset: int):
         self.store = store
         self.offset = offset
 
@@ -509,7 +497,7 @@ class RangeList:
 
 
 class StoreBitmap:
-    def __init__(self, store, offset):
+    def __init__(self, store: Store, offset: int):
         self.store = store
         self.offset = offset
 
@@ -526,23 +514,23 @@ class StoreBitmap:
         for i in range(0, len(self.data) // 4, 4):
             b = buf[i : i + 4]
             val = c_vss.uint32(b)
-            for j in range(32):
+            for _ in range(32):
                 if val & 0x00000001 == 0:
                     self.test.append(False)
                 else:
                     self.test.append(True)
                 val >>= 1
 
-    def has_offset(self, offset):
+    def has_offset(self, offset: int) -> bool:
         return self.in_use(offset // BLOCK_SIZE)
 
-    def in_use(self, block):
+    def in_use(self, block: int) -> bool:
         return not self.is_set(block)
 
-    def is_set(self, block):
+    def is_set(self, block: int) -> bool:
         return (self.data[block // 8] & (1 << (block % 8))) != 0
 
-    def __getitem__(self, block):
+    def __getitem__(self, block: int) -> bool:
         return self.in_use(block)
 
 
@@ -551,7 +539,7 @@ class BlockMap:
         self.map = {}
         self.reverse = {}
 
-    def add(self, descriptor):
+    def add(self, descriptor: BlockDescriptor) -> None:
         if not descriptor.is_used:
             return
 
@@ -580,10 +568,7 @@ class BlockMap:
 
         if existing:
             if descriptor.is_overlay:
-                if existing.is_overlay:
-                    overlay = existing
-                else:
-                    overlay = existing.overlay
+                overlay = existing if existing.is_overlay else existing.overlay
 
                 if overlay:
                     overlay.bitmap |= descriptor.bitmap
@@ -602,28 +587,28 @@ class BlockMap:
             revkey = descriptor.relative_offset // BLOCK_SIZE
             reversemap[revkey] = descriptor
 
-    def get_descriptor(self, offset):
+    def get_descriptor(self, offset: int) -> None:
         pass
 
-    def __getitem__(self, block):
+    def __getitem__(self, block: int) -> BlockMap:
         return self
 
 
 class BlockDescriptor:
     __slots__ = (
-        "store",
-        "original_offset",
-        "relative_offset",
-        "store_offset",
-        "flags",
         "bitmap",
-        "overlay",
-        "is_used",
-        "is_overlay",
+        "flags",
         "is_forwarder",
+        "is_overlay",
+        "is_used",
+        "original_offset",
+        "overlay",
+        "relative_offset",
+        "store",
+        "store_offset",
     )
 
-    def __init__(self, buf):
+    def __init__(self, buf: bytes):
         # self.store = store
 
         entry = c_vss.block_descriptor(buf)
@@ -638,7 +623,7 @@ class BlockDescriptor:
         self.is_overlay = bool(self.flags & BLOCK_FLAG.IS_OVERLAY)
         self.is_forwarder = bool(self.flags & BLOCK_FLAG.IS_FORWARDER)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(BlockDescriptor, other):
             return False
 
@@ -650,7 +635,7 @@ class BlockDescriptor:
             and self.bitmap == other.bitmap
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<BlockDescriptor original_offset=0x{self.original_offset:08x}"
             f" relative_offset=0x{self.relative_offset:08x} store_offset=0x{self.store_offset:08x}"
@@ -661,7 +646,7 @@ class BlockDescriptor:
 # libvshadow_store_descriptor_read_buffer
 
 
-def read_block(fh, offset, struct):
+def read_block(fh: BinaryIO, offset: int, struct: type[Structure]) -> tuple[Structure, bytes]:
     header, buf = read_block_data(fh, offset, struct)
 
     r = [buf]
@@ -674,7 +659,7 @@ def read_block(fh, offset, struct):
     return header, b"".join(r)
 
 
-def read_block_data(fh, offset, struct):
+def read_block_data(fh: BinaryIO, offset: int, struct: type[Structure]) -> tuple[Structure, bytes]:
     fh.seek(offset)
     buf = fh.read(BLOCK_SIZE)
     header = struct(buf)

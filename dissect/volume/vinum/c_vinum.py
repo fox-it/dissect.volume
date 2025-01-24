@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dissect.cstruct import cstruct
 
 # Structures are copied from:
@@ -16,7 +18,7 @@ typedef uint64 off_t;
  *
  * Vinum drives start with this structure:
  *
- *\                                            Sector
+ *                                             Sector
  * |--------------------------------------|
  * |   PDP-11 memorial boot block         |      0
  * |--------------------------------------|
@@ -32,7 +34,7 @@ typedef uint64 off_t;
  * |   Configuration info, second copy    |      9 + size of config
  * |                                      |
  * |--------------------------------------|
- */
+ *
 
 /* Sizes and offsets of our information. */
 #define GV_HDR_OFFSET       4096    /* Offset of vinum header. */
@@ -72,7 +74,7 @@ struct gv_hdr {
     uint64_t        config_length;
     struct gv_label label;
 } header;
-"""  # noqa W605
+"""
 
 c_vinum = cstruct(endian=">").load(vinum_def)
 

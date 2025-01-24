@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
@@ -26,39 +27,42 @@ from dissect.volume.vinum.config import (
     tokenize,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
 CONF_TS = datetime.min
 
 
 def test_volume_state() -> None:
-    assert VolumeState.UP == VolumeState(b"up")
-    assert VolumeState.DOWN == VolumeState(b"down")
-    assert VolumeState.DOWN == VolumeState(b"foo")
+    assert VolumeState(b"up") == VolumeState.UP
+    assert VolumeState(b"down") == VolumeState.DOWN
+    assert VolumeState(b"foo") == VolumeState.DOWN
 
 
 def test_plex_state() -> None:
-    assert PlexState.UP == PlexState(b"up")
-    assert PlexState.INITIALIZING == PlexState(b"initializing")
-    assert PlexState.DEGRADED == PlexState(b"degraded")
-    assert PlexState.GROWABLE == PlexState(b"growable")
-    assert PlexState.DOWN == PlexState(b"down")
-    assert PlexState.DOWN == PlexState(b"foo")
+    assert PlexState(b"up") == PlexState.UP
+    assert PlexState(b"initializing") == PlexState.INITIALIZING
+    assert PlexState(b"degraded") == PlexState.DEGRADED
+    assert PlexState(b"growable") == PlexState.GROWABLE
+    assert PlexState(b"down") == PlexState.DOWN
+    assert PlexState(b"foo") == PlexState.DOWN
 
 
 def test_plex_org() -> None:
-    assert PlexOrg.CONCAT == PlexOrg(b"concat")
-    assert PlexOrg.STRIPED == PlexOrg(b"striped")
-    assert PlexOrg.RAID5 == PlexOrg(b"raid5")
-    assert PlexOrg.DISORG == PlexOrg(b"?")
-    assert PlexOrg.DISORG == PlexOrg(b"foo")
+    assert PlexOrg(b"concat") == PlexOrg.CONCAT
+    assert PlexOrg(b"striped") == PlexOrg.STRIPED
+    assert PlexOrg(b"raid5") == PlexOrg.RAID5
+    assert PlexOrg(b"?") == PlexOrg.DISORG
+    assert PlexOrg(b"foo") == PlexOrg.DISORG
 
 
 def test_sd_state() -> None:
-    assert SDState.UP == SDState(b"up")
-    assert SDState.INITIALIZING == SDState(b"initializing")
-    assert SDState.DEGRADED == SDState(b"degraded")
-    assert SDState.GROWABLE == SDState(b"growable")
-    assert SDState.DOWN == SDState(b"down")
-    assert SDState.DOWN == SDState(b"foo")
+    assert SDState(b"up") == SDState.UP
+    assert SDState(b"initializing") == SDState.INITIALIZING
+    assert SDState(b"degraded") == SDState.DEGRADED
+    assert SDState(b"growable") == SDState.GROWABLE
+    assert SDState(b"down") == SDState.DOWN
+    assert SDState(b"foo") == SDState.DOWN
 
 
 @pytest.mark.parametrize(
@@ -304,7 +308,9 @@ def test__parse_plex_config(
         ([b"state", b"up"], None, "No drive found for sd, ignoring sd config"),
     ],
 )
-def test__parse_sd_config(caplog, tokens: list[bytes], result: Volume | None, logline: str) -> None:
+def test__parse_sd_config(
+    caplog: pytest.LogCaptureFixture, tokens: list[bytes], result: Volume | None, logline: str
+) -> None:
     caplog.set_level(logging.DEBUG)
     log.setLevel(logging.DEBUG)
     sd = _parse_sd_config(CONF_TS, iter(tokens))
@@ -359,7 +365,7 @@ def test_tokenize_raises(line: bytes, idx: int) -> None:
 def gen_vps(vps_cls: Volume | Plex | SD, arg_name: str, count: int = 0) -> iter[Volume | Plex | SD]:
     vps_name = vps_cls.__name__.lower()
 
-    def vps_iter() -> Volume | Plex | SD:
+    def vps_iter() -> Iterator[Volume | Plex | SD]:
         idx = 0
         done = False
 
@@ -418,8 +424,8 @@ def gen_vps(vps_cls: Volume | Plex | SD, arg_name: str, count: int = 0) -> iter[
             b"volume\x00foo\nplex\x00sd",
             {
                 "volumes": list(gen_vps(Volume, "name", 1)),
-                "plexes": list(),
-                "sds": list(),
+                "plexes": [],
+                "sds": [],
             },
             "Invalid config line b'foo'",
         ),
