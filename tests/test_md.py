@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from io import BytesIO
 from typing import BinaryIO
 
 import pytest
 
-from dissect.volume.md.md import MD
+from dissect.volume.md.md import MD, find_super_block
 from dissect.volume.raid.stream import RAID0Stream
 
 
@@ -61,3 +62,10 @@ def test_md_raid0_zones(md_raid0: list[BinaryIO]) -> None:
     assert fh.zones[1].zone_end == 5242880
     assert fh.zones[1].dev_start == 1048576
     assert len(fh.zones[1].devices) == 2
+
+
+def test_md_search_sb_none_size() -> None:
+    fh = BytesIO()
+    fh.size = None
+
+    assert find_super_block(fh) == (None, None, None)

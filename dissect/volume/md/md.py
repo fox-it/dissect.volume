@@ -143,14 +143,23 @@ class MDPhysicalDisk(PhysicalDisk):
         super().__init__(fh, self.data_offset * SECTOR_SIZE, self.data_size * SECTOR_SIZE)
 
 
-def find_super_block(fh: BinaryIO) -> tuple[int, int, int]:
-    # Super block can start at a couple of places, depending on version
-    # Just try them all until we find one
+def find_super_block(fh: BinaryIO) -> tuple[int | None, int | None, int | None]:
+    """Find the super block of an MD device.
 
-    size = fh.size if hasattr(fh, "size") else fh.seek(0, io.SEEK_END)
+    Args:
+        fh: The file-like object to search for the super block.
+
+    Returns:
+        A tuple containing the sector, major version, and minor version of the super block, or a
+        tuple of ``None`` if no super block was found.
+    """
+
+    size = fh.size if (hasattr(fh, "size") and fh.size is not None) else fh.seek(0, io.SEEK_END)
     size //= SECTOR_SIZE
 
-    possible_offsets = [
+    # Super block can start at a couple of places, depending on version
+    # Just try them all until we find one
+    possible_sectors = [
         # 0.90.0
         (size & ~(c_md.MD_RESERVED_SECTORS - 1)) - c_md.MD_RESERVED_SECTORS,
         # Major version 1
@@ -162,16 +171,18 @@ def find_super_block(fh: BinaryIO) -> tuple[int, int, int]:
         8,
     ]
 
-    for offset in possible_offsets:
-        fh.seek(offset * SECTOR_SIZE)
+    for sector in possible_sectors:
+        if sector < 0:
+            continue
 
+        fh.seek(sector * SECTOR_SIZE)
         peek = fh.read(12)
         if len(peek) != 12:
             continue
 
         magic, major, minor = struct.unpack("<3I", peek)
         if magic == c_md.MD_SB_MAGIC:
-            return offset, major, minor
+            return sector, major, minor
 
     return None, None, None
 
