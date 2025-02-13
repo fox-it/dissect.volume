@@ -47,47 +47,47 @@ def lvm_mirror() -> Iterator[list[BinaryIO]]:
 
 @pytest.fixture
 def mbr() -> Iterator[BinaryIO]:
-    yield from open_file("_data/mbr.bin")
+    yield from open_file("_data/disk/mbr.bin")
 
 
 @pytest.fixture
 def gpt() -> Iterator[BinaryIO]:
-    yield from open_file("_data/gpt.bin")
+    yield from open_file("_data/disk/gpt.bin")
 
 
 @pytest.fixture
 def gpt_hybrid() -> Iterator[BinaryIO]:
-    yield from open_file("_data/gpt_hybrid.bin")
+    yield from open_file("_data/disk/gpt_hybrid.bin")
 
 
 @pytest.fixture
 def gpt_4k() -> Iterator[BinaryIO]:
-    yield from open_file("_data/gpt_4k.bin")
+    yield from open_file("_data/disk/gpt_4k.bin")
 
 
 @pytest.fixture
 def gpt_esxi() -> Iterator[BinaryIO]:
-    yield from open_file("_data/gpt_esxi.bin")
+    yield from open_file("_data/disk/gpt_esxi.bin")
 
 
 @pytest.fixture
 def gpt_no_name_xff() -> Iterator[BinaryIO]:
-    yield from open_file("_data/gpt_no_name_xff.bin")
+    yield from open_file("_data/disk/gpt_no_name_xff.bin")
 
 
 @pytest.fixture
 def apm() -> Iterator[BinaryIO]:
-    yield from open_file("_data/apm.bin")
+    yield from open_file("_data/disk/apm.bin")
 
 
 @pytest.fixture
 def bsd() -> Iterator[BinaryIO]:
-    yield from open_file("_data/bsd.bin")
+    yield from open_file("_data/disk/bsd.bin")
 
 
 @pytest.fixture
 def bsd64() -> Iterator[BinaryIO]:
-    yield from open_file_gz("_data/bsd64.bin.gz")
+    yield from open_file_gz("_data/disk/bsd64.bin.gz")
 
 
 @pytest.fixture
