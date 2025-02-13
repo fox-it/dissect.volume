@@ -356,6 +356,8 @@ def tokenize(line: bytes) -> iter[bytes]:
 
 
 class VinumConfigs(TypedDict):
+    """Vinum configurations."""
+
     volumes: list[Volume]
     plexes: list[Plex]
     sds: list[SD]
@@ -376,7 +378,7 @@ def parse_vinum_config(config_time: datetime, config: bytes) -> VinumConfigs:
 
     Parsing forgiveness and strictness is implemented in the same way as in the vinum kernel code:
 
-    Lines with an unknown configuration "type" (not b"volume", b"plex" or b"sd"), are ignored.
+    Lines with an unknown configuration ``type`` (not ``volume``, ``plex`` or ``sd``), are ignored.
 
     Lines that fail to parse due to:
       - no name present

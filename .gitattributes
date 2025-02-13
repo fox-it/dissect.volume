@@ -1,5 +1,1 @@
-tests/data/dm/* filter=lfs diff=lfs merge=lfs -text
-tests/data/md/* filter=lfs diff=lfs merge=lfs -text
-tests/data/ddf/* filter=lfs diff=lfs merge=lfs -text
-tests/data/lvm/* filter=lfs diff=lfs merge=lfs -text
-tests/data/vinum/* filter=lfs diff=lfs merge=lfs -text
+tests/_data/** filter=lfs diff=lfs merge=lfs -text
