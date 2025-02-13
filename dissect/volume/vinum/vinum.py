@@ -73,6 +73,8 @@ DefaultByName = defaultdict[bytes, T]
 
 
 class Config(TypedDict):
+    """Configuration."""
+
     volumes: ByName[Volume]
     plexes: ByName[Plex]
     sds: ByName[SD]
