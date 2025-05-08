@@ -10,22 +10,29 @@ from dissect.volume.raid.stream import RAID0Stream
 
 
 @pytest.mark.parametrize(
-    ("fixture", "name", "level", "size", "num_test_blocks"),
+    ("fixture", "dev_range", "name", "level", "size", "num_test_blocks"),
     [
-        ("md_linear", "fedora:linear", -1, 0x200000, 512),
-        ("md_raid0", "fedora:raid0", 0, 0x500000, 512),
-        ("md_raid1", "fedora:raid1", 1, 0x200000, 512),
-        ("md_raid4", "fedora:raid4", 4, 0x200000, 512),
-        ("md_raid5", "fedora:raid5", 5, 0x200000, 512),
-        ("md_raid6", "fedora:raid6", 6, 0x200000, 512),
-        ("md_raid10", "fedora:raid10", 10, 0x200000, 512),
-        ("md_90_raid1", None, 1, 0x178000, 512),
+        ("md_linear", (None, None), "fedora:linear", -1, 0x200000, 512),
+        ("md_raid0", (None, None), "fedora:raid0", 0, 0x500000, 512),
+        ("md_raid1", (None, None), "fedora:raid1", 1, 0x200000, 512),
+        ("md_raid1", (-1, None), "fedora:raid1", 1, 0x200000, 512),
+        ("md_raid4", (None, None), "fedora:raid4", 4, 0x200000, 512),
+        ("md_raid5", (None, None), "fedora:raid5", 5, 0x200000, 512),
+        ("md_raid6", (None, None), "fedora:raid6", 6, 0x200000, 512),
+        ("md_raid10", (None, None), "fedora:raid10", 10, 0x200000, 512),
+        ("md_90_raid1", (None, None), None, 1, 0x178000, 512),
     ],
 )
 def test_md_read(
-    fixture: str, name: str, level: int, size: int, num_test_blocks: int, request: pytest.FixtureRequest
+    fixture: str,
+    dev_range: tuple[int, int],
+    name: str,
+    level: int,
+    size: int,
+    num_test_blocks: int,
+    request: pytest.FixtureRequest,
 ) -> None:
-    md = MD(request.getfixturevalue(fixture))
+    md = MD(request.getfixturevalue(fixture)[dev_range[0] : dev_range[1]])
 
     conf = md.configurations
     assert len(conf) == 1
