@@ -38,7 +38,7 @@ def test_md_read(
 
     fh = vd.open()
     for i in range(1, num_test_blocks + 1):
-        assert fh.read(4096) == i.to_bytes(2, "little") * 2048
+        assert fh.read(4096) == i.to_bytes(2, "little") * 2048, f"Failed at block {i}"
 
 
 def test_md_raid0_zones(md_raid0: list[BinaryIO]) -> None:
@@ -69,3 +69,17 @@ def test_md_search_sb_none_size() -> None:
     fh.size = None
 
     assert find_super_block(fh) == (None, None, None)
+
+
+def test_md_raid1_multiple_disks(md_raid1: list[BinaryIO]) -> None:
+    md = MD(md_raid1[-1:])
+
+    conf = md.configurations
+    vd = conf[0].virtual_disks[0]
+
+    assert vd.level == 1
+    assert vd.size == 0x200000
+
+    fh = vd.open()
+    for i in range(1, 512 + 1):
+        assert fh.read(4096) == i.to_bytes(2, "little") * 2048, f"Failed at block {i}"

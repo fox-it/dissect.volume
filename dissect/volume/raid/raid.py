@@ -66,8 +66,11 @@ class VirtualDisk:
         if self.level == Level.RAID0:
             return RAID0Stream(self)
         if self.level == Level.RAID1:
-            # Don't really care which mirror to read from, so just open the first disk
-            return self.disk_map[0][1].open()
+            # Don't really care which mirror to read from, so just open the first disk we have.
+            # We don't know if we have the first disk or the n-th disk so we select the first
+            # available disk using an iterable.
+            _, (_, disk) = next(iter(self.disk_map.items()))
+            return disk.open()
         if self.level in (Level.RAID4, Level.RAID5, Level.RAID6):
             return RAID456Stream(self)
         if self.level == Level.RAID10:
