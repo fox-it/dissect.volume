@@ -102,7 +102,7 @@ def _read_descriptors(
     descriptors = []
     while True:
         desc = ctype(fh)
-        if all(v == 0 for v in desc._values.values()):
+        if all(v == 0 for v in desc.__values__.values()):
             break
         descriptors.append(desc)
 
