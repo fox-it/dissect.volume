@@ -25,7 +25,7 @@ classifiers = [
   "Topic :: Utilities",
 ]
 dependencies = [
-    "dissect.cstruct>=4,<5",
+    "dissect.cstruct>=4.6.dev,<5", # TODO: remove dev when cstruct 4.6 is released
     "dissect.util>3,<4",
 ]
 dynamic = ["version"]
@@ -37,7 +37,7 @@ repository = "https://github.com/fox-it/dissect.volume"
 
 [project.optional-dependencies]
 dev = [
-    "dissect.cstruct>=4.0.dev,<5.0.dev",
+    "dissect.cstruct>=4.6.dev,<5.0.dev",
     "dissect.util>=3.0.dev,<4.0.dev",
 ]
 
