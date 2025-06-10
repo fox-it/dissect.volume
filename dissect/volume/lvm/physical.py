@@ -99,14 +99,8 @@ class LVM2Device:
 def _read_descriptors(
     fh: BinaryIO, ctype: type[c_lvm.disk_locn | c_lvm.raw_locn]
 ) -> list[c_lvm.disk_locn | c_lvm.raw_locn]:
-    descriptors = []
-    while True:
-        desc = ctype(fh)
-        if all(v == 0 for v in desc.__values__.values()):
-            break
-        descriptors.append(desc)
-
-    return descriptors
+    # Read an unspecified number of descriptors from the file handle, stopping on all zeros
+    return ctype[None](fh)
 
 
 def parse_metadata(string: str) -> dict:
