@@ -1,16 +1,10 @@
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass
 from datetime import datetime  # noqa: TC003
 from functools import cache
-from typing import BinaryIO, Optional, get_args, get_origin, get_type_hints
-
-if sys.version_info >= (3, 10):
-    from types import UnionType  # novermin
-else:
-    # Python 3.9
-    from typing import Union as UnionType
+from types import UnionType  # novermin
+from typing import BinaryIO, get_args, get_origin, get_type_hints
 
 from dissect.util import ts
 from dissect.util.stream import MappingStream
@@ -36,7 +30,7 @@ class MetaBase:
 
             type_ = get_origin(field_type)
 
-            if type_ is UnionType and field_type == Optional[field_type]:
+            if type_ is UnionType and field_type == field_type | None:
                 value = obj.get(field_name)
                 field_type = get_args(field_type)[0]
                 type_ = get_origin(field_type)
@@ -586,14 +580,3 @@ class RAIDSegment(Segment):
 
         if self.raids:
             self.raids = [tuple(self.raids[i : i + 2]) for i in range(0, len(self.raids), 2)]
-
-
-# Backward compatibility with Python 3.9
-if sys.version_info < (3, 10):
-    items = list(globals().values())
-    for obj in items:
-        if isinstance(obj, type) and issubclass(obj, MetaBase) and hasattr(obj, "__annotations__"):
-            for k, v in obj.__annotations__.items():
-                if isinstance(v, str) and "|" in v:
-                    # Because we import Union as UnionType
-                    obj.__annotations__[k] = f"UnionType[{v.replace(' | ', ', ')}]"

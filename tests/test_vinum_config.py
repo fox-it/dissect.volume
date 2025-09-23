@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -30,7 +30,7 @@ from dissect.volume.vinum.config import (
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-CONF_TS = datetime.min
+CONF_TS = datetime.min.replace(tzinfo=timezone.utc)
 
 
 def test_volume_state() -> None:
