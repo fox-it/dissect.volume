@@ -61,7 +61,7 @@ class DDFConfiguration(Configuration):
             sec = 0 if vdcr.secondary_element_count == 1 else vdcr.secondary_element_seq
 
             i = 0
-            for starting_block, pds in zip(vdcr.starting_block, vdcr.physical_disk_sequence):
+            for starting_block, pds in zip(vdcr.starting_block, vdcr.physical_disk_sequence, strict=False):
                 if matched_pd := pd_map.get(pds):
                     vd_pd_map[sec * count + i] = (starting_block, matched_pd)
 
