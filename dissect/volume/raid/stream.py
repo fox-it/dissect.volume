@@ -358,7 +358,7 @@ class RAID456Stream(AlignedStream):
 
         stripe_size = self.virtual_disk.stripe_size
         while length:
-            stripe, offset_in_stripe, dd_idx, _pd_idx, _qd_idx, _ddf_layout = self._get_stripe_read_info(offset)
+            stripe, offset_in_stripe, dd_idx, _, _, _ = self._get_stripe_read_info(offset)
             offset_in_device = stripe * stripe_size + offset_in_stripe
             dd_start, dd_dev = self.disk_map[dd_idx]
 
