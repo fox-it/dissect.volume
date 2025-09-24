@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime  # noqa: TC003
 from functools import cache
-from types import UnionType  # novermin
+from types import UnionType
 from typing import BinaryIO, get_args, get_origin, get_type_hints
 
 from dissect.util import ts
