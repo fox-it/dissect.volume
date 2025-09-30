@@ -13,7 +13,7 @@ class Disk:
     def __init__(self, fh: BinaryIO, sector_size: int = 512):
         self.fh = fh
         self.sector_size = sector_size
-        self.scheme = None
+        self.scheme: APM | GPT | MBR | BSD = None
         self.partitions: list[Partition] = []
 
         start = fh.tell()

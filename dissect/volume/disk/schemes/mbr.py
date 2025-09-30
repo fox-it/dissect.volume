@@ -83,8 +83,7 @@ class MBR:
                 number=num_start + num + 1,  # partitions are 1-indexed
                 offset=part_offset,
                 size=partition.sector_size * self.sector_size,
-                vtype=partition.type,
-                name=None,
+                type=partition.type,
                 flags=partition.bootable,
                 raw=partition,
             )

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, BinaryIO
+from typing import TYPE_CHECKING, BinaryIO
 from uuid import UUID
 
 from dissect.util.stream import RangeStream
 
 if TYPE_CHECKING:
     from dissect.cstruct import Structure
+
+    from dissect.volume.disk.schemes import APM, BSD, GPT, MBR
+
 
 PARTITION_TYPES = {
     0x00: "Empty",
@@ -178,47 +181,64 @@ PARTITION_TYPES = {
 
 
 class Partition:
+    """A partition on a disk.
+
+    Args:
+        disk: The disk the partition is on.
+        number: The partition number (1-indexed).
+        offset: The offset of the partition in bytes.
+        size: The size of the partition in bytes.
+        type: The partition type. This is either an integer (MBR, BSD), a string (APM),
+              or a UUID object (GPT).
+        name: The partition name (if available).
+        flags: The partition flags (if available).
+        guid: The partition GUID (if available).
+        type_str: The partition type as a string (if available).
+        raw: The raw partition structure (if available).
+    """
+
     def __init__(
         self,
-        disk: Any,
+        disk: APM | BSD | GPT | MBR,
         number: int,
         offset: int,
         size: int,
-        vtype: int | UUID,
-        name: str,
+        type: int | str | UUID,
+        name: str | None = None,
         flags: int | None = None,
         guid: UUID | None = None,
-        vtype_str: str | None = None,
+        type_str: str | None = None,
         raw: Structure = None,
     ):
         self.disk = disk
         self.number = number
         self.offset = offset
         self.size = size
-        self.type = vtype
+        self.type = type
         self.name = name
         self.flags = flags
         self.guid = guid
-        self.type_str = vtype_str
+        self.type_str = type_str
         self.raw = raw
 
     def __repr__(self) -> str:
-        vtype_str = self.type_str
+        type_str = self.type_str
 
         if isinstance(self.type, int):
-            vtype = hex(self.type)
-            vtype_key = self.type
+            type = hex(self.type)
+            type_key = self.type
         elif isinstance(self.type, bytes):
-            vtype = UUID(bytes_le=self.type)
-            vtype_key = vtype
+            type = UUID(bytes_le=self.type)
+            type_key = type
         elif isinstance(self.type, str):
-            vtype_str = self.type
+            type_str = self.type
 
-        vtype_str = vtype_str or f"{vtype} ({PARTITION_TYPES.get(vtype_key, 'Unknown')})"
+        type_str = type_str or f"{type} ({PARTITION_TYPES.get(type_key, 'Unknown')})"
         return (
             f"<Partition number={self.number} offset=0x{self.offset:x} "
-            f"size=0x{self.size:x} type={vtype_str} name={self.name!r}>"
+            f"size=0x{self.size:x} type={type_str} name={self.name!r}>"
         )
 
     def open(self) -> BinaryIO:
+        """Open a stream to the partition."""
         return RangeStream(self.disk.fh, offset=self.offset, size=self.size)

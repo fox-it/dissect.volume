@@ -284,11 +284,11 @@ class BSD:
         # MBR DragonFlyBSD
         0x6C,
         # GPT DragonFlyBSD disklabel32
-        UUID("9D087404-1CA5-11DC-8817-01301BB8A9F5").bytes_le,
+        UUID("9D087404-1CA5-11DC-8817-01301BB8A9F5"),
         # GPT DragonFlyBSD disklabel64
-        UUID("3D48CE54-1D16-11DC-8696-01301BB8A9F5").bytes_le,
+        UUID("3D48CE54-1D16-11DC-8696-01301BB8A9F5"),
         # GPT FreeBSD disklabel
-        UUID("516E7CB4-6ECF-11D6-8FF8-00022D09712B").bytes_le,
+        UUID("516E7CB4-6ECF-11D6-8FF8-00022D09712B"),
     )
 
     def __init__(self, fh: BinaryIO, sector_size: int = 512):
@@ -358,16 +358,15 @@ class BSD:
 
                 offset = partition.p_boffset
                 size = partition.p_bsize
-                guid = partition.p_stor_uuid
+                guid = UUID(bytes_le=partition.p_stor_uuid)
 
             yield Partition(
                 disk=self,
                 number=i + 1,  # partitions are 1-indexed
                 offset=offset,
                 size=size,
-                vtype=partition.p_fstype,
-                name=None,
+                type=partition.p_fstype,
                 guid=guid,
-                vtype_str=FS_NAMES.get(partition.p_fstype, "?"),
+                type_str=FS_NAMES.get(partition.p_fstype, "?"),
                 raw=partition,
             )
