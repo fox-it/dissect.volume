@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import io
-from typing import TYPE_CHECKING, BinaryIO
+from typing import BinaryIO
 
 from dissect.util import ts
 
-from dissect.volume.ddf.c_ddf import DEFAULT_SECTOR_SIZE, c_ddf
+from dissect.volume.ddf.c_ddf import c_ddf
 from dissect.volume.exceptions import DDFError
 from dissect.volume.raid.raid import (
     RAID,
@@ -16,8 +16,7 @@ from dissect.volume.raid.raid import (
 )
 from dissect.volume.raid.stream import Layout, Level
 
-if TYPE_CHECKING:
-    DDFPhysicalDiskDescriptor = BinaryIO | "DDFPhysicalDisk"
+DEFAULT_SECTOR_SIZE = 512
 
 DECADE = 3600 * 24 * (365 * 10 + 2)
 
@@ -25,7 +24,7 @@ DECADE = 3600 * 24 * (365 * 10 + 2)
 class DDF(RAID):
     def __init__(
         self,
-        fh: list[DDFPhysicalDiskDescriptor] | DDFPhysicalDiskDescriptor,
+        fh: list[BinaryIO | DDFPhysicalDisk] | BinaryIO | DDFPhysicalDisk,
         sector_size: int = DEFAULT_SECTOR_SIZE,
     ):
         fhs = [fh] if not isinstance(fh, list) else fh
@@ -96,7 +95,7 @@ class DDFVirtualDisk(VirtualDisk):
 
         super().__init__(
             self.vdr.name,
-            self.vdr.guid,
+            self.vdr.guid.hex(),
             self.vdcr.size * block_size,
             level,
             layout,

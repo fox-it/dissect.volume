@@ -10,20 +10,20 @@ from dissect.volume.raid.stream import RAID0Stream
 
 
 @pytest.mark.parametrize(
-    ("fixture", "name", "level", "size", "num_test_blocks"),
+    ("fixture", "name", "uuid", "level", "size", "num_test_blocks"),
     [
-        ("md_linear", "fedora:linear", -1, 0x200000, 512),
-        ("md_raid0", "fedora:raid0", 0, 0x500000, 512),
-        ("md_raid1", "fedora:raid1", 1, 0x200000, 512),
-        ("md_raid4", "fedora:raid4", 4, 0x200000, 512),
-        ("md_raid5", "fedora:raid5", 5, 0x200000, 512),
-        ("md_raid6", "fedora:raid6", 6, 0x200000, 512),
-        ("md_raid10", "fedora:raid10", 10, 0x200000, 512),
-        ("md_90_raid1", None, 1, 0x178000, 512),
+        pytest.param("md_linear", "fedora:linear", "3657debc-2cb4-6c49-d01c-76653ae532ac", -1, 0x200000, 512, id=""),
+        pytest.param("md_raid0", "fedora:raid0", "e6b48b47-f483-6050-6591-94edd9949c0e", 0, 0x500000, 512, id=""),
+        pytest.param("md_raid1", "fedora:raid1", "914306a9-ed9f-19b3-c26b-9d1f5a37ddcf", 1, 0x200000, 512, id=""),
+        pytest.param("md_raid4", "fedora:raid4", "0baab6c0-a8b6-6d02-1f24-d25cb6fc685c", 4, 0x200000, 512, id=""),
+        pytest.param("md_raid5", "fedora:raid5", "04285eaf-4cf2-4b78-dbf9-550e7430ac94", 5, 0x200000, 512, id=""),
+        pytest.param("md_raid6", "fedora:raid6", "bc6b1414-2b5d-0dbc-a9fe-6961381d366c", 6, 0x200000, 512, id=""),
+        pytest.param("md_raid10", "fedora:raid10", "624a35d7-72a4-01e5-b00e-ec9905cd32e7", 10, 0x200000, 512, id=""),
+        pytest.param("md_90_raid1", None, "810dec20-9deb-9b1b-6ae8-99361087e917", 1, 0x178000, 512, id=""),
     ],
 )
 def test_md_read(
-    fixture: str, name: str, level: int, size: int, num_test_blocks: int, request: pytest.FixtureRequest
+    fixture: str, name: str, uuid: str, level: int, size: int, num_test_blocks: int, request: pytest.FixtureRequest
 ) -> None:
     md = MD(request.getfixturevalue(fixture))
 
@@ -33,6 +33,7 @@ def test_md_read(
 
     vd = conf[0].virtual_disks[0]
     assert vd.name == name
+    assert vd.uuid == uuid
     assert vd.level == level
     assert vd.size == size
 

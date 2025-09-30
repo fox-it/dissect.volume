@@ -15,8 +15,6 @@ from dissect.volume.raid.stream import Level
 if TYPE_CHECKING:
     import datetime
 
-    MDPhysicalDiskDescriptor = BinaryIO | "MDPhysicalDisk"
-
 
 class MD(RAID):
     """Read an MD RAID set of one or multiple devices/file-like objects.
@@ -27,7 +25,7 @@ class MD(RAID):
         fh: A single file-like object or :class:`MDPhysicalDisk`, or a list of multiple belonging to the same RAID set.
     """
 
-    def __init__(self, fh: list[MDPhysicalDiskDescriptor] | MDPhysicalDiskDescriptor):
+    def __init__(self, fh: list[BinaryIO | MDPhysicalDisk] | BinaryIO | MDPhysicalDisk):
         fhs = [fh] if not isinstance(fh, list) else fh
         physical_disks = [MDPhysicalDisk(fh) if not isinstance(fh, MDPhysicalDisk) else fh for fh in fhs]
 
@@ -70,7 +68,7 @@ class MDVirtualDisk(VirtualDisk):
 
         super().__init__(
             reference_disk.set_name,
-            reference_disk.set_uuid,
+            str(reference_disk.set_uuid),
             size,
             reference_disk.level,
             reference_disk.layout,
