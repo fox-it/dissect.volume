@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, BinaryIO
+from uuid import UUID
 
 from dissect.cstruct import cstruct
 
@@ -108,10 +109,10 @@ class GPT:
                         number=part_num + 1,  # partitions are 1-indexed
                         offset=partition.first_lba * self.sector_size,
                         size=(partition.last_lba - partition.first_lba) * self.sector_size,
-                        vtype=partition.type_guid,
+                        type=UUID(bytes_le=partition.type_guid),
                         name=name,
                         flags=partition.attribute_flags,
-                        guid=partition.partition_guid,
+                        guid=UUID(bytes_le=partition.partition_guid),
                         raw=partition,
                     )
 

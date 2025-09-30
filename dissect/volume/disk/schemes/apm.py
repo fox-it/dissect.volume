@@ -66,7 +66,7 @@ class APM:
                 number=i + 1,  # partitions are 1-indexed
                 offset=p.partition_start * self.sector_size,
                 size=p.partition_size * self.sector_size,
-                vtype=p.partition_type.rstrip(b"\x00").decode(),
+                type=p.partition_type.rstrip(b"\x00").decode(),
                 name=p.partition_name.rstrip(b"\x00").decode(),
                 raw=p,
             )
