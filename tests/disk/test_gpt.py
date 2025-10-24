@@ -25,6 +25,9 @@ def test_gpt(gpt: BinaryIO) -> None:
     assert d.partitions[0].type == UUID("c12a7328-f81f-11d2-ba4b-00a0c93ec93b")
     assert d.partitions[0].guid == UUID("27d920bc-e414-45e0-9503-2606de7a1056")
     assert d.partitions[0].name == "EFI System Partition"
+    assert repr(d.partitions[0]) == (
+        "<Partition number=1 offset=0x5000 size=0xc7ffe00 type='c12a7328-f81f-11d2-ba4b-00a0c93ec93b (EFI System partition)' name='EFI System Partition'>"  # noqa: E501
+    )
 
     assert d.partitions[1].number == 2
     assert d.partitions[1].offset == 0xC900000
@@ -32,6 +35,9 @@ def test_gpt(gpt: BinaryIO) -> None:
     assert d.partitions[1].type == UUID("ebd0a0a2-b9e5-4433-87c0-68b6b72699c7")
     assert d.partitions[1].guid == UUID("a14cecf3-b364-4d6d-a540-e245e6df9d11")
     assert d.partitions[1].name == ""
+    assert repr(d.partitions[1]) == (
+        "<Partition number=2 offset=0xc900000 size=0x7465ffe00 type='ebd0a0a2-b9e5-4433-87c0-68b6b72699c7 (Windows Basic data partition)' name=''>"  # noqa: E501
+    )
 
 
 def test_gpt_invalid(gpt: BinaryIO) -> None:
@@ -54,6 +60,7 @@ def test_hybrid_gpt(gpt_hybrid: BinaryIO) -> None:
     assert d.partitions[0].type == 0x83
     assert d.partitions[0].guid is None
     assert d.partitions[0].name is None
+    assert repr(d.partitions[0]) == "<Partition number=1 offset=0x100000 size=0x80200 type='0x83 (Linux)' name=None>"
 
     assert d.partitions[1].number == 2
     assert d.partitions[1].offset == 0x180200
@@ -61,6 +68,7 @@ def test_hybrid_gpt(gpt_hybrid: BinaryIO) -> None:
     assert d.partitions[1].type == 0x83
     assert d.partitions[1].guid is None
     assert d.partitions[1].name is None
+    assert repr(d.partitions[1]) == "<Partition number=2 offset=0x180200 size=0x7bc00 type='0x83 (Linux)' name=None>"
 
     assert d.partitions[2].number == 1
     assert d.partitions[2].offset == 0x100000
@@ -68,6 +76,9 @@ def test_hybrid_gpt(gpt_hybrid: BinaryIO) -> None:
     assert d.partitions[2].type == UUID("0fc63daf-8483-4772-8e79-3d69d8477de4")
     assert d.partitions[2].guid == UUID("44eea528-8489-4bbc-a480-56bd208cd233")
     assert d.partitions[2].name == "Linux filesystem"
+    assert repr(d.partitions[2]) == (
+        "<Partition number=1 offset=0x100000 size=0x80000 type='0fc63daf-8483-4772-8e79-3d69d8477de4 (Linux filesystem data)' name='Linux filesystem'>"  # noqa: E501
+    )
 
     assert d.partitions[3].number == 2
     assert d.partitions[3].offset == 0x4400
@@ -151,6 +162,9 @@ def test_gpt_esxi(gpt_esxi: BinaryIO) -> None:
     assert d.partitions[3].type == UUID("4eb2ea39-7855-4790-a79e-fae495e21f8d")
     assert d.partitions[3].guid == UUID("fc7f0906-62a5-47b2-8f40-98d9427fefe0")
     assert d.partitions[3].name == "OSDATA"
+    assert repr(d.partitions[3]) == (
+        "<Partition number=7 offset=0x206600000 size=0x1df99ffe00 type='4eb2ea39-7855-4790-a79e-fae495e21f8d (Unknown)' name='OSDATA'>"  # noqa: E501
+    )
 
     assert d.partitions[4].number == 8
     assert d.partitions[4].offset == 0x2000100000

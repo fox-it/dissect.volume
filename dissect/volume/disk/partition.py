@@ -224,19 +224,17 @@ class Partition:
     def __repr__(self) -> str:
         type_str = self.type_str
 
-        if isinstance(self.type, int):
-            type = hex(self.type)
-            type_key = self.type
-        elif isinstance(self.type, bytes):
-            type = UUID(bytes_le=self.type)
-            type_key = type
-        elif isinstance(self.type, str):
-            type_str = self.type
+        if type_str is None:
+            if isinstance(self.type, int):
+                type_str = f"{hex(self.type)} ({PARTITION_TYPES.get(self.type, 'Unknown')})"
+            elif isinstance(self.type, UUID):
+                type_str = f"{self.type} ({PARTITION_TYPES.get(self.type, 'Unknown')})"
+            else:
+                type_str = self.type
 
-        type_str = type_str or f"{type} ({PARTITION_TYPES.get(type_key, 'Unknown')})"
         return (
             f"<Partition number={self.number} offset=0x{self.offset:x} "
-            f"size=0x{self.size:x} type={type_str} name={self.name!r}>"
+            f"size=0x{self.size:x} type={type_str!r} name={self.name!r}>"
         )
 
     def open(self) -> BinaryIO:

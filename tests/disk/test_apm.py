@@ -21,6 +21,9 @@ def test_apm(apm: BinaryIO) -> None:
     assert d.partitions[0].size == 0x7E00
     assert d.partitions[0].type == "Apple_partition_map"
     assert d.partitions[0].name == "Apple"
+    assert repr(d.partitions[0]) == (
+        "<Partition number=1 offset=0x200 size=0x7e00 type='Apple_partition_map' name='Apple'>"
+    )
 
     assert d.partitions[1].number == 2
     assert d.partitions[1].offset == 0x8000
