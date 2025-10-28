@@ -17,6 +17,7 @@ def test_bsd(bsd: BinaryIO) -> None:
     assert vs.partitions[0].size == 0x200
     assert vs.partitions[0].type == 7
     assert vs.partitions[0].guid is None
+    assert repr(vs.partitions[0]) == "<Partition number=1 offset=0x800 size=0x200 type='4.2BSD' name=None>"
     assert vs.partitions[0].open().read() == b"\x01" * 512
 
     assert vs.partitions[1].number == 2

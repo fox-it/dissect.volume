@@ -20,6 +20,7 @@ def test_mbr(mbr: BinaryIO) -> None:
     assert d.partitions[0].offset == 0x100000
     assert d.partitions[0].size == 0x1F400000
     assert d.partitions[0].type == 0x7
+    assert repr(d.partitions[0]) == "<Partition number=1 offset=0x100000 size=0x1f400000 type='0x7 (NTFS)' name=None>"
 
     assert d.partitions[1].number == 2
     assert d.partitions[1].offset == 0x1F500000
