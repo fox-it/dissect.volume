@@ -10,29 +10,64 @@ if TYPE_CHECKING:
 
 
 class Disk:
+    """Generic disk partitioning implementation. The partition scheme is detected automatically.
+
+    Supported partition schemes:
+        - MBR (Master Boot Record)
+        - GPT (GUID Partition Table)
+        - APM (Apple Partition Map)
+        - BSD disklabel (contained in another partition or standalone)
+
+    Args:
+        fh: File-like object of a disk containing a partition scheme.
+        sector_size: Sector size in bytes. GPT will try to detect this automatically, but can be overridden here.
+    """
+
     def __init__(self, fh: BinaryIO, sector_size: int = 512):
         self.fh = fh
         self.sector_size = sector_size
         self.scheme: APM | GPT | MBR | BSD = None
         self.partitions: list[Partition] = []
 
-        start = fh.tell()
         errors = []
 
-        # The GPT scheme also parses the protective MBR, so it must be tried before MBR.
-        # BSD is usually contained in another scheme's partition, but it can also live standalone.
-        # We try to detect BSD as part of another scheme later on, so only try to detect BSD last
-        # as standalone.
-        for scheme in [GPT, MBR, APM, BSD]:
-            try:
-                fh.seek(start)
-                self.scheme = scheme(fh, sector_size=self.sector_size)
+        # Do a little dance with MBR and GPT first, since we can try to determine the sector size here
+        try:
+            self.fh.seek(0)
+            self.scheme = MBR(self.fh, sector_size=self.sector_size)
+        except Exception as e:
+            errors.append(str(e))
 
-                break
-            except Exception as e:
-                errors.append(str(e))
+        if self.scheme and any(p.type == 0xEE for p in self.scheme.partitions):
+            # There's a protective MBR, potentially GPT
+            # Try to detect sector size until we find a valid GPT header
+            for guess in [512, 4096]:
+                try:
+                    self.fh.seek(0)
+                    self.scheme = GPT(self.fh, sector_size=guess)
+                    # Winner winner chicken dinner
+                    self.sector_size = guess
+                    break
+                except Exception as e:
+                    errors.append(str(e))
+            else:
+                # No valid GPT found
+                raise DiskError("Found GPT type partition, but MBR scheme detected. Maybe exotic sector size?")
 
-        if not self.scheme:
+        else:
+            # It's not MBR or GPT, try the other schemes
+            # BSD is usually contained in another scheme's partition, but it can also live standalone.
+            # We try to detect BSD as part of another scheme later on, so only try to detect BSD last
+            # as standalone.
+            for scheme in [APM, BSD]:
+                try:
+                    self.fh.seek(0)
+                    self.scheme = scheme(self.fh, sector_size=self.sector_size)
+                    break
+                except Exception as e:
+                    errors.append(str(e))
+
+        if self.scheme is None:
             raise DiskError("Unable to detect a valid partition scheme:\n- {}".format("\n- ".join(errors)))
 
         main_scheme = self.scheme
@@ -43,9 +78,6 @@ class Disk:
                 self.partitions.extend(self.scheme.partitions)
             else:
                 self.partitions.append(partition)
-
-        if isinstance(self.scheme, MBR) and any(p.type == 0xEE for p in self.partitions):
-            raise DiskError("Found GPT type partition, but MBR scheme detected. Maybe 4K sector size.")
 
     @property
     def serial(self) -> int | None:

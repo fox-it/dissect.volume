@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import io
-import re
 from typing import BinaryIO
 from uuid import UUID
 
@@ -96,37 +95,30 @@ def test_hybrid_gpt(gpt_hybrid: BinaryIO) -> None:
 
 
 def test_gpt_4k(gpt_4k: BinaryIO) -> None:
-    with pytest.raises(
-        disk.DiskError, match=re.escape("Found GPT type partition, but MBR scheme detected. Maybe 4K sector size.")
-    ):
-        disk.Disk(gpt_4k)
+    for d in [disk.Disk(gpt_4k), disk.Disk(gpt_4k, sector_size=4096)]:
+        assert isinstance(d.scheme, GPT)
+        assert len(d.partitions) == 3
 
-    gpt_4k.seek(0)
-    d = disk.Disk(gpt_4k, sector_size=4096)
+        assert d.partitions[0].number == 1
+        assert d.partitions[0].offset == 0x100000
+        assert d.partitions[0].size == 0x100000
+        assert d.partitions[0].type == UUID("0fc63daf-8483-4772-8e79-3d69d8477de4")
+        assert d.partitions[0].guid == UUID("21b90a6e-0918-4e72-aa1a-85f8ba8ef8cc")
+        assert d.partitions[0].name == "Linux filesystem"
 
-    assert isinstance(d.scheme, GPT)
-    assert len(d.partitions) == 3
+        assert d.partitions[1].number == 2
+        assert d.partitions[1].offset == 0x300000
+        assert d.partitions[1].size == 0x100000
+        assert d.partitions[1].type == UUID("0fc63daf-8483-4772-8e79-3d69d8477de4")
+        assert d.partitions[1].guid == UUID("c6f4ad42-4652-448d-89d7-7cfa7710abe7")
+        assert d.partitions[1].name == "Linux filesystem"
 
-    assert d.partitions[0].number == 1
-    assert d.partitions[0].offset == 0x100000
-    assert d.partitions[0].size == 0x100000
-    assert d.partitions[0].type == UUID("0fc63daf-8483-4772-8e79-3d69d8477de4")
-    assert d.partitions[0].guid == UUID("21b90a6e-0918-4e72-aa1a-85f8ba8ef8cc")
-    assert d.partitions[0].name == "Linux filesystem"
-
-    assert d.partitions[1].number == 2
-    assert d.partitions[1].offset == 0x300000
-    assert d.partitions[1].size == 0x100000
-    assert d.partitions[1].type == UUID("0fc63daf-8483-4772-8e79-3d69d8477de4")
-    assert d.partitions[1].guid == UUID("c6f4ad42-4652-448d-89d7-7cfa7710abe7")
-    assert d.partitions[1].name == "Linux filesystem"
-
-    assert d.partitions[2].number == 3
-    assert d.partitions[2].offset == 0x500000
-    assert d.partitions[2].size == 0xB5A000
-    assert d.partitions[2].type == UUID("0fc63daf-8483-4772-8e79-3d69d8477de4")
-    assert d.partitions[2].guid == UUID("b7230707-dcaa-4483-823b-06f9b718ee55")
-    assert d.partitions[2].name == "Linux filesystem"
+        assert d.partitions[2].number == 3
+        assert d.partitions[2].offset == 0x500000
+        assert d.partitions[2].size == 0xB5A000
+        assert d.partitions[2].type == UUID("0fc63daf-8483-4772-8e79-3d69d8477de4")
+        assert d.partitions[2].guid == UUID("b7230707-dcaa-4483-823b-06f9b718ee55")
+        assert d.partitions[2].name == "Linux filesystem"
 
 
 def test_gpt_esxi(gpt_esxi: BinaryIO) -> None:
