@@ -95,6 +95,12 @@ def test_hybrid_gpt(gpt_hybrid: BinaryIO) -> None:
 
 
 def test_gpt_4k(gpt_4k: BinaryIO) -> None:
+    with pytest.raises(
+        disk.DiskError,
+        match=r"Found GPT type partition, but MBR scheme detected. Given sector size \(512\) seems incorrect.",
+    ):
+        disk.Disk(gpt_4k, sector_size=512)
+
     for d in [disk.Disk(gpt_4k), disk.Disk(gpt_4k, sector_size=4096)]:
         assert isinstance(d.scheme, GPT)
         assert len(d.partitions) == 3

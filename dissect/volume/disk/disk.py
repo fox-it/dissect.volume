@@ -20,12 +20,14 @@ class Disk:
 
     Args:
         fh: File-like object of a disk containing a partition scheme.
-        sector_size: Sector size in bytes. GPT will try to detect this automatically, but can be overridden here.
+        sector_size: Sector size in bytes.
+                     If not provided and the disk contains GPT, it will be detected automatically.
+                     Otherwise, 512 bytes is assumed.
     """
 
-    def __init__(self, fh: BinaryIO, sector_size: int = 512):
+    def __init__(self, fh: BinaryIO, sector_size: int | None = None):
         self.fh = fh
-        self.sector_size = sector_size
+        self.sector_size = sector_size or 512
         self.scheme: APM | GPT | MBR | BSD = None
         self.partitions: list[Partition] = []
 
@@ -41,7 +43,8 @@ class Disk:
         if self.scheme and any(p.type == 0xEE for p in self.scheme.partitions):
             # There's a protective MBR, potentially GPT
             # Try to detect sector size until we find a valid GPT header
-            for guess in [512, 4096]:
+            # If the user provided a sector size, we only try that one, otherwise we try the most common ones
+            for guess in [512, 4096] if sector_size is None else [sector_size]:
                 try:
                     self.fh.seek(0)
                     self.scheme = GPT(self.fh, sector_size=guess)
@@ -52,7 +55,12 @@ class Disk:
                     errors.append(str(e))
             else:
                 # No valid GPT found
-                raise DiskError("Found GPT type partition, but MBR scheme detected. Maybe exotic sector size?")
+                if sector_size is None:
+                    reason = "Maybe exotic sector size?"
+                else:
+                    reason = f"Given sector size ({sector_size}) seems incorrect."
+
+                raise DiskError(f"Found GPT type partition, but MBR scheme detected. {reason}")
 
         else:
             # It's not MBR or GPT, try the other schemes
