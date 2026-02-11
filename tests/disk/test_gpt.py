@@ -23,6 +23,8 @@ def test_gpt(gpt: BinaryIO) -> None:
     assert d.partitions[0].offset == 20480
     assert d.partitions[0].size == 0xC7FFE00
     assert d.partitions[0].type == UUID("c12a7328-f81f-11d2-ba4b-00a0c93ec93b")
+    assert d.partitions[0].type_str == "c12a7328-f81f-11d2-ba4b-00a0c93ec93b (EFI System partition)"
+    assert d.partitions[0].type_name == "EFI System partition"
     assert d.partitions[0].guid == UUID("27d920bc-e414-45e0-9503-2606de7a1056")
     assert d.partitions[0].name == "EFI System Partition"
     assert repr(d.partitions[0]) == (
@@ -33,6 +35,8 @@ def test_gpt(gpt: BinaryIO) -> None:
     assert d.partitions[1].offset == 0xC900000
     assert d.partitions[1].size == 0x7465FFE00
     assert d.partitions[1].type == UUID("ebd0a0a2-b9e5-4433-87c0-68b6b72699c7")
+    assert d.partitions[1].type_str == "ebd0a0a2-b9e5-4433-87c0-68b6b72699c7 (Windows Basic data partition)"
+    assert d.partitions[1].type_name == "Windows Basic data partition"
     assert d.partitions[1].guid == UUID("a14cecf3-b364-4d6d-a540-e245e6df9d11")
     assert d.partitions[1].name == ""
     assert repr(d.partitions[1]) == (
