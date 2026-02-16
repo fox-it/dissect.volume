@@ -218,25 +218,27 @@ class Partition:
         self.name = name
         self.flags = flags
         self.guid = guid
-        self.type_str = type_str
+        self.type_str = type_str or translate_partition_type(self.type)
+        self.type_name = translate_partition_type(self.type, False)
         self.raw = raw
 
     def __repr__(self) -> str:
-        type_str = self.type_str
-
-        if type_str is None:
-            if isinstance(self.type, int):
-                type_str = f"{hex(self.type)} ({PARTITION_TYPES.get(self.type, 'Unknown')})"
-            elif isinstance(self.type, UUID):
-                type_str = f"{self.type} ({PARTITION_TYPES.get(self.type, 'Unknown')})"
-            else:
-                type_str = self.type
-
         return (
             f"<Partition number={self.number} offset=0x{self.offset:x} "
-            f"size=0x{self.size:x} type={type_str!r} name={self.name!r}>"
+            f"size=0x{self.size:x} type={self.type_str!r} name={self.name!r}>"
         )
 
     def open(self) -> BinaryIO:
         """Open a stream to the partition."""
         return RangeStream(self.disk.fh, offset=self.offset, size=self.size)
+
+
+def translate_partition_type(type: int | str | UUID, prepend_type: bool = True) -> str:
+    """Translate a partition type to a human-readable format."""
+
+    if not isinstance(type, str):
+        name = PARTITION_TYPES.get(type, "Unknown")
+        type = hex(type) if isinstance(type, int) else type
+        return f"{type} ({name})" if prepend_type else name
+
+    return type
