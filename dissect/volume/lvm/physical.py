@@ -30,6 +30,7 @@ class LVM2Device:
             raise LVM2Error("Can't find physical volume label header")
 
         fh.seek(self.label_offset + self.label.offset)
+
         self.header = c_lvm.pv_header(fh)
         self.id = self.header.pv_uuid.decode()
         self.size = self.header.device_size
@@ -87,13 +88,14 @@ class LVM2Device:
 
         return b"".join(r)
 
-    def open(self) -> BinaryIO:
+    def open(self, pv_size: int = 0) -> BinaryIO:
+        # Use pv_size if the physical
+        size = max(pv_size, self.size)
         runlist = [
-            (area.offset // SECTOR_SIZE, (area.size or self.size) // SECTOR_SIZE)
-            for area in self._data_area_descriptors
+            (area.offset // SECTOR_SIZE, (area.size or size) // SECTOR_SIZE) for area in self._data_area_descriptors
         ]
 
-        return RunlistStream(self.fh, runlist, self.size, SECTOR_SIZE)
+        return RunlistStream(self.fh, runlist, size, SECTOR_SIZE)
 
 
 def _read_descriptors(

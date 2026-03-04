@@ -85,7 +85,7 @@ class VolumeGroup(MetaBase):
 
     def attach(self, devices: dict[str, LVM2Device]) -> None:
         for pv in self.physical_volumes.values():
-            pv.dev = devices.get(pv.id.replace("-", ""))
+            pv._dev = devices.get(pv.id.replace("-", ""))
 
     def _from_dict(self, obj: dict, name: str | None = None, parent: MetaBase | None = None) -> None:
         super()._from_dict(obj, name=name, parent=parent)
@@ -131,22 +131,19 @@ class PhysicalVolume(MetaBase):
     def dev(self) -> LVM2Device | None:
         return self._dev
 
-    @dev.setter
-    def dev(self, device: LVM2Device | None) -> None:
-        if not device:
-            return
-        # Correct the size of the LVM2 device if the size of the PhysicalVolume exceeds it
-        # This is because device_size of LVM2 can be overwritten if it is part of a VolumeGroup according to:
-        #   https://github.com/lvmteam/lvm2/blob/6e208b81ec587434097de3207fbd1ecd7a0afb8c/lib/format_text/layout.h#L44
+    @property
+    def size(self) -> int:
+        """Return the size of the physical volume in bytes.
 
+        This can sometimes be larger than what the LVM2Device dictates, but the VolumeGroup overwrites it:
+            https://github.com/lvmteam/lvm2/blob/6e208b81ec587434097de3207fbd1ecd7a0afb8c/lib/format_text/layout.h#L44
+        """
         # This size is also displayed when showing physical device information with pvdisplay:
         #   https://github.com/lvmteam/lvm2/blob/6e208b81ec587434097de3207fbd1ecd7a0afb8c/lib/display/display.c#L291
         if self.dev_size:
-            device.size = max(self.dev_size * self.vg.extent_size, device.size)
-        else:
-            device.size = max(self.pe_start + (self.pe_count * self.vg.extent_size * SECTOR_SIZE), device.size)
-
-        self._dev = device
+            return self.dev_size * self.vg.extent_size
+        # The size of the stripes on this device + the offset where it starts
+        return (self.pe_start + self.pe_count * self.vg.extent_size) * SECTOR_SIZE
 
     def _from_dict(self, obj: dict, name: str | None = None, parent: MetaBase | None = None) -> None:
         super()._from_dict(obj, name=name, parent=parent)
@@ -360,12 +357,11 @@ class StripedSegment(Segment):
         offset = 0
         for pv_name, extent_offset in self.stripes:
             if pv_name not in opened_pv:
-                if (pv_dev := pv[pv_name].dev) is not None:
-                    pv_fh = pv_dev.open()
+                _pv = pv[pv_name]
+                if (pv_dev := _pv.dev) is not None:
+                    pv_fh = pv_dev.open(_pv.size)
                 else:
-                    raise LVM2Error(
-                        f"Physical volume not found: {pv_name} (id={pv[pv_name].id}, device={pv[pv_name].device})"
-                    )
+                    raise LVM2Error(f"Physical volume not found: {pv_name} (id={_pv.id}, device={_pv.device})")
                 opened_pv[pv_name] = pv_fh
             else:
                 pv_fh = opened_pv[pv_name]
