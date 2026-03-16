@@ -89,7 +89,7 @@ class LVM2Device:
         return b"".join(r)
 
     def open(self, pv_size: int = 0) -> BinaryIO:
-        # Use pv_size if the physical
+        # Use pv_size if the size reported by the pv_header is smaller than the one found inside the PhysicalVolume
         size = max(pv_size, self.size)
         runlist = [
             (area.offset // SECTOR_SIZE, (area.size or size) // SECTOR_SIZE) for area in self._data_area_descriptors
