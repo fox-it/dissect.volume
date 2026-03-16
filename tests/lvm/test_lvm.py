@@ -91,20 +91,20 @@ def test_lvm_sizes_mismatch(lvm_inconsistent_sizes: BinaryIO) -> None:
 
     # Size manually adjusted to be smaller than the actual data
     # This is the offset the data of a text file starts
-    assert next(iter(lvm.devices.values())).size == 0x39C800
+    assert next(iter(lvm.devices.values())).size == 0x300000
     physical_volume = lvm.vg.pv[0]
-    assert physical_volume.size == 0xC000000
+    assert physical_volume.size == 0x8000000
 
     fh = lv.open()
     # Size of the stripe
-    assert fh.size == 0x800000
+    assert fh.size == 0x400000
 
     segment_stream = fh._runs[0][2]
     pv_stream = segment_stream._runs[0][2]
     # Check whether the underlying pv stream size is correct (The non adjusted size)
-    assert pv_stream.size == 0xC000000
+    assert pv_stream.size == 0x8000000
 
-    fh.seek(0x39C800)
+    fh.seek(0x3B8800)
 
     expected_data = b"A small file at the end of the disk"
     assert fh.read(len(expected_data)) == expected_data
@@ -117,18 +117,18 @@ def test_lvm_sizes_mismatch_missing_dev_size(lvm_inconsistent_sizes: BinaryIO) -
 
     # Size manually adjusted to be smaller than the actual data
     # This is the offset the data of a text file starts
-    assert next(iter(lvm.devices.values())).size == 0x39C800
+    assert next(iter(lvm.devices.values())).size == 0x300000
     physical_volume = lvm.vg.pv[0]
     # physical_volume.size will calculate size based on the the data offset
     # and size of the stripes if dev_size is not defined
     physical_volume.dev_size = None
-    assert physical_volume.size == 0x900000
+    assert physical_volume.size == 0x500000
 
     fh = lv.open()
     # Size of the stripe
-    assert fh.size == 0x800000
+    assert fh.size == 0x400000
 
-    fh.seek(0x39C800)
+    fh.seek(0x3B8800)
 
     expected_data = b"A small file at the end of the disk"
     assert fh.read(len(expected_data)) == expected_data
