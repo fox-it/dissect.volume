@@ -135,8 +135,10 @@ class PhysicalVolume(MetaBase):
     def size(self) -> int:
         """Return the size of the physical volume in bytes.
 
-        This can sometimes be larger than what the LVM2Device dictates, but the VolumeGroup overwrites it:
+        This can sometimes be larger than what the LVM2Device dictates, in which case the VolumeGroup overwrites it:
             https://github.com/lvmteam/lvm2/blob/6e208b81ec587434097de3207fbd1ecd7a0afb8c/lib/format_text/layout.h#L44
+
+        From the code, this is also the value the pvck tool uses to update pv_header.device_size_xl.
         """
         # This size is also displayed when showing physical device information with pvdisplay:
         #   https://github.com/lvmteam/lvm2/blob/6e208b81ec587434097de3207fbd1ecd7a0afb8c/lib/display/display.c#L291
