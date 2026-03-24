@@ -1,4 +1,5 @@
 # Reference: https://www.snia.org/sites/default/files/SNIA_DDF_Technical_Position_v2.0.pdf
+from __future__ import annotations
 
 from dissect.cstruct import cstruct
 

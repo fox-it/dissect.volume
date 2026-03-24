@@ -198,7 +198,6 @@ class RAID456Stream(AlignedStream):
 
     def _get_stripe_read_info(self, offset: int) -> tuple[int, int, int, int, int | None]:
         """Calculate the stripe, offset in the stripe, data disk, parity disk and "Q" parity disk for a given sector."""
-
         # Reference: raid5_compute_sector
         stripe_size = self.virtual_disk.stripe_size
         raid_disks = self.virtual_disk.num_disks

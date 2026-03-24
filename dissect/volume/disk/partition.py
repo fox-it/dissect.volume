@@ -235,7 +235,6 @@ class Partition:
 
 def translate_partition_type(type: int | str | UUID, prepend_type: bool = True) -> str:
     """Translate a partition type to a human-readable format."""
-
     if not isinstance(type, str):
         name = PARTITION_TYPES.get(type, "Unknown")
         type = hex(type) if isinstance(type, int) else type
