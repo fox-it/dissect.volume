@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from io import BytesIO
-from typing import BinaryIO
+from typing import TYPE_CHECKING, BinaryIO
 
 import pytest
 
-from dissect.volume.raid.stream import Layout, Level
+from dissect.volume.raid.stream import Level
 from dissect.volume.vinum.c_vinum import c_vinum
 from dissect.volume.vinum.vinum import (
     Vinum,
@@ -14,6 +14,9 @@ from dissect.volume.vinum.vinum import (
     VinumPhysicalDisk,
     VinumPlexDisk,
 )
+
+if TYPE_CHECKING:
+    from dissect.volume.raid.stream import Layout
 
 
 @pytest.mark.parametrize(

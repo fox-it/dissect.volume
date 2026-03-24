@@ -15,23 +15,27 @@ from dissect.util import ts
 from dissect.volume.raid.raid import (
     RAID,
     Configuration,
-    DiskMap,
     PhysicalDisk,
     VirtualDisk,
 )
 from dissect.volume.raid.stream import Layout, Level
 from dissect.volume.vinum.c_vinum import MAGIC_ACTIVE, MAGIC_INACTIVE, c_vinum
 from dissect.volume.vinum.config import (
-    SD,
-    Plex,
     PlexOrg,
     PlexState,
     SDState,
-    Volume,
     parse_vinum_config,
 )
 
 if TYPE_CHECKING:
+    from dissect.volume.raid.raid import (
+        DiskMap,
+    )
+    from dissect.volume.vinum.config import (
+        SD,
+        Plex,
+        Volume,
+    )
     VinumPhysicalDiskDescriptor = BinaryIO | "VinumPhysicalDisk"
 
 log = logging.getLogger(__name__)

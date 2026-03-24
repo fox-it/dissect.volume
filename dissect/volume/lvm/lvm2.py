@@ -18,7 +18,7 @@ log.setLevel(os.getenv("DISSECT_LOG_LVM", "CRITICAL"))
 
 
 class LVM2:
-    """Logical Volume Manager"""
+    """Logical Volume Manager."""
 
     def __init__(self, fh: list[BinaryIO | LVM2Device] | BinaryIO | LVM2Device):
         self.fh = [fh] if not isinstance(fh, list) else fh
