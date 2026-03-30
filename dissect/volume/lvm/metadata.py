@@ -144,7 +144,7 @@ class PhysicalVolume(MetaBase):
         #   https://github.com/lvmteam/lvm2/blob/6e208b81ec587434097de3207fbd1ecd7a0afb8c/lib/display/display.c#L291
         if self.dev_size:
             return self.dev_size * self.vg.extent_size
-        # The size of the stripes on this device + the offset where it starts
+        # The size of the stripes on this device + size of the metadata
         return (self.pe_start + self.pe_count * self.vg.extent_size) * SECTOR_SIZE
 
     def _from_dict(self, obj: dict, name: str | None = None, parent: MetaBase | None = None) -> None:
