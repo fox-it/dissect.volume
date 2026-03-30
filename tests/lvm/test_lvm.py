@@ -85,6 +85,7 @@ def test_lvm_mirror(lvm_mirror: list[BinaryIO]) -> None:
 
 
 def test_lvm_sizes_mismatch(lvm_inconsistent_sizes: BinaryIO) -> None:
+    """Test if opening the LVM2Device uses PhysicalVolume.size when LVM2Device.size < PhysicalVolume.size."""
     lvm = LVM2(lvm_inconsistent_sizes)
 
     lv = lvm.vg.logical_volumes["lv"]
@@ -111,6 +112,7 @@ def test_lvm_sizes_mismatch(lvm_inconsistent_sizes: BinaryIO) -> None:
 
 
 def test_lvm_sizes_mismatch_missing_dev_size(lvm_inconsistent_sizes: BinaryIO) -> None:
+    """Test if opening the LVM2Device uses the calculated disk size when PhysicalVolume.dev_size is missing."""
     lvm = LVM2(lvm_inconsistent_sizes)
 
     lv = lvm.vg.logical_volumes["lv"]
@@ -127,6 +129,10 @@ def test_lvm_sizes_mismatch_missing_dev_size(lvm_inconsistent_sizes: BinaryIO) -
     fh = lv.open()
     # Size of the stripe
     assert fh.size == 0x400000
+
+    segment_stream = fh._runs[0][2]
+    pv_stream = segment_stream._runs[0][2]
+    assert pv_stream.size == 0x500000
 
     fh.seek(0x3B8800)
 
