@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime  # noqa: TC003
 from functools import cache
 from types import UnionType
-from typing import BinaryIO, get_args, get_origin, get_type_hints
+from typing import TYPE_CHECKING, BinaryIO, get_args, get_origin, get_type_hints
 
 from dissect.util import ts
 from dissect.util.stream import MappingStream
@@ -13,6 +13,9 @@ from dissect.volume.dm.thin import ThinPool
 from dissect.volume.exceptions import LVM2Error
 from dissect.volume.lvm.c_lvm2 import SECTOR_SIZE
 from dissect.volume.lvm.physical import LVM2Device  # noqa: TC001
+
+if TYPE_CHECKING:
+    from dissect.util.stream import RunlistStream
 
 
 @dataclass(init=False)
@@ -151,6 +154,23 @@ class PhysicalVolume(MetaBase):
         super()._from_dict(obj, name=name, parent=parent)
         self._name = name
         self._volume_group = parent
+
+    def open(self) -> BinaryIO:
+        """Opens the physical device and adjusts any sizes if required."""
+        if self.dev is None:
+            raise LVM2Error(f"Physical volume not found: {self.name} (id={self.id}, device={self.device})")
+
+        stream: RunlistStream = self.dev.open()
+        if stream.size >= self.size:
+            return stream
+
+        size = max(stream.size, self.size)
+        runlist = [
+            (area.offset // SECTOR_SIZE, (area.size or size) // SECTOR_SIZE) for area in self.dev._data_area_descriptors
+        ]
+        stream.runlist = runlist
+        stream.size = max(stream.size, self.size)
+        return stream
 
 
 @dataclass(init=False)
@@ -359,11 +379,7 @@ class StripedSegment(Segment):
         offset = 0
         for pv_name, extent_offset in self.stripes:
             if pv_name not in opened_pv:
-                _pv = pv[pv_name]
-                if (pv_dev := _pv.dev) is not None:
-                    pv_fh = pv_dev.open(_pv.size)
-                else:
-                    raise LVM2Error(f"Physical volume not found: {pv_name} (id={_pv.id}, device={_pv.device})")
+                pv_fh = pv[pv_name].open()
                 opened_pv[pv_name] = pv_fh
             else:
                 pv_fh = opened_pv[pv_name]
