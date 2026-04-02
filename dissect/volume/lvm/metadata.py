@@ -168,11 +168,10 @@ class PhysicalVolume(MetaBase):
             return stream
 
         size = max(stream.size, self.size)
-        runlist = [
-            (area.offset // SECTOR_SIZE, (area.size or size) // SECTOR_SIZE) for area in self.dev._data_area_descriptors
-        ]
-        stream.runlist = runlist
-        stream.size = max(stream.size, self.size)
+        area = self.dev._data_area_descriptors[0]
+
+        stream.runlist = [(area.offset // SECTOR_SIZE, size // SECTOR_SIZE)]
+        stream.size = size
         return stream
 
 

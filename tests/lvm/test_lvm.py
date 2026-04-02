@@ -8,6 +8,7 @@ import pytest
 
 from dissect.volume.exceptions import LVM2Error
 from dissect.volume.lvm import LVM2
+from dissect.volume.lvm.c_lvm2 import c_lvm
 from dissect.volume.lvm.metadata import StripedSegment
 
 
@@ -82,6 +83,23 @@ def test_lvm_mirror(lvm_mirror: list[BinaryIO]) -> None:
     fh = lv.open()
     for i in range(1, 513):
         assert fh.read(4096) == i.to_bytes(2, "little") * 2048
+
+
+def test_lvm_multiple_data_areas() -> None:
+    """Test if LVM2 raises an Error if more than 1 data area descriptor is specified.
+
+    This test can be removed once lvm2 allows for multiple area descriptors
+    """
+    lvm_data = [
+        c_lvm.label_header(id=b"LABELONE", offset=len(c_lvm.label_header)),
+        c_lvm.pv_header(),
+        c_lvm.disk_locn(offset=1),
+        c_lvm.disk_locn(offset=2),
+        c_lvm.disk_locn(),
+    ]
+    data = io.BytesIO(b"".join(struct.dumps() for struct in lvm_data))
+    with pytest.raises(RuntimeError, match="There should be 1 data area descriptor, found 2"):
+        LVM2(data)
 
 
 def test_lvm_sizes_mismatch(lvm_inconsistent_sizes: BinaryIO) -> None:
