@@ -156,7 +156,10 @@ class PhysicalVolume(MetaBase):
         self._volume_group = parent
 
     def open(self) -> BinaryIO:
-        """Opens the physical device and adjusts any sizes if required."""
+        """Opens the physical device.
+
+        Automatically uses the corect size as determined by :attr:`size`
+        """
         if self.dev is None:
             raise LVM2Error(f"Physical volume not found: {self.name} (id={self.id}, device={self.device})")
 
