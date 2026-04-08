@@ -30,11 +30,17 @@ class LVM2Device:
             raise LVM2Error("Can't find physical volume label header")
 
         fh.seek(self.label_offset + self.label.offset)
+
         self.header = c_lvm.pv_header(fh)
         self.id = self.header.pv_uuid.decode()
         self.size = self.header.device_size
 
         self._data_area_descriptors = _read_descriptors(fh, c_lvm.disk_locn)
+
+        if len(self._data_area_descriptors) != 1:
+            # According to the LVM2 code, there should only be 1 data area descriptor for each Physical Volume
+            raise RuntimeError(f"There should be 1 data area descriptor, found {len(self._data_area_descriptors)}")
+
         self._metadata_area_descriptors = _read_descriptors(fh, c_lvm.disk_locn)
 
         self._metadata_areas = []
@@ -88,11 +94,10 @@ class LVM2Device:
         return b"".join(r)
 
     def open(self) -> BinaryIO:
-        runlist = [
-            (area.offset // SECTOR_SIZE, (area.size or self.size) // SECTOR_SIZE)
-            for area in self._data_area_descriptors
-        ]
-
+        # Only accounts for one data area descriptor
+        # When multiple descriptors get allowed in the future, this code should be adjusted to reflect that
+        area = self._data_area_descriptors[0]
+        runlist = [(area.offset // SECTOR_SIZE, self.size // SECTOR_SIZE)]
         return RunlistStream(self.fh, runlist, self.size, SECTOR_SIZE)
 
 
