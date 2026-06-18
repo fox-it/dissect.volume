@@ -151,7 +151,6 @@ def find_super_block(fh: BinaryIO) -> tuple[int | None, int | None, int | None]:
         A tuple containing the sector, major version, and minor version of the super block, or a
         tuple of ``None`` if no super block was found.
     """
-
     size = fh.size if (hasattr(fh, "size") and fh.size is not None) else fh.seek(0, io.SEEK_END)
     size //= SECTOR_SIZE
 

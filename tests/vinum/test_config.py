@@ -14,7 +14,6 @@ from dissect.volume.vinum.config import (
     PlexState,
     SDState,
     TokenizeError,
-    VinumConfigs,
     Volume,
     VolumeState,
     _parse_plex_config,
@@ -29,6 +28,10 @@ from dissect.volume.vinum.config import (
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+    from dissect.volume.vinum.config import (
+        VinumConfigs,
+    )
 
 CONF_TS = datetime.min.replace(tzinfo=timezone.utc)
 

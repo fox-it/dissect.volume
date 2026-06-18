@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime  # noqa: TC003
 from functools import cache
 from types import UnionType
-from typing import BinaryIO, get_args, get_origin, get_type_hints
+from typing import TYPE_CHECKING, BinaryIO, get_args, get_origin, get_type_hints
 
 from dissect.util import ts
 from dissect.util.stream import MappingStream
@@ -13,6 +13,9 @@ from dissect.volume.dm.thin import ThinPool
 from dissect.volume.exceptions import LVM2Error
 from dissect.volume.lvm.c_lvm2 import SECTOR_SIZE
 from dissect.volume.lvm.physical import LVM2Device  # noqa: TC001
+
+if TYPE_CHECKING:
+    from dissect.util.stream import RunlistStream
 
 
 @dataclass(init=False)
@@ -131,10 +134,45 @@ class PhysicalVolume(MetaBase):
     def dev(self) -> LVM2Device | None:
         return self._dev
 
+    @property
+    def size(self) -> int:
+        """Return the size of the physical volume in bytes.
+
+        This can sometimes be larger than what the LVM2Device dictates, in which case the VolumeGroup overwrites it:
+            https://github.com/lvmteam/lvm2/blob/6e208b81ec587434097de3207fbd1ecd7a0afb8c/lib/format_text/layout.h#L44
+
+        From the code, this is also the value the pvck tool uses to update pv_header.device_size_xl.
+        """
+        # This size is also displayed when showing physical device information with pvdisplay:
+        #   https://github.com/lvmteam/lvm2/blob/6e208b81ec587434097de3207fbd1ecd7a0afb8c/lib/display/display.c#L291
+        if self.dev_size:
+            return self.dev_size * self.vg.extent_size
+        # The size of the stripes on this device + size of the metadata
+        return (self.pe_start + self.pe_count * self.vg.extent_size) * SECTOR_SIZE
+
     def _from_dict(self, obj: dict, name: str | None = None, parent: MetaBase | None = None) -> None:
         super()._from_dict(obj, name=name, parent=parent)
         self._name = name
         self._volume_group = parent
+
+    def open(self) -> BinaryIO:
+        """Opens the physical device.
+
+        Automatically uses the corect size as determined by :attr:`size`
+        """
+        if self.dev is None:
+            raise LVM2Error(f"Physical volume not found: {self.name} (id={self.id}, device={self.device})")
+
+        stream: RunlistStream = self.dev.open()
+        if stream.size >= self.size:
+            return stream
+
+        size = max(stream.size, self.size)
+        area = self.dev._data_area_descriptors[0]
+
+        stream.runlist = [(area.offset // SECTOR_SIZE, size // SECTOR_SIZE)]
+        stream.size = size
+        return stream
 
 
 @dataclass(init=False)
@@ -343,12 +381,7 @@ class StripedSegment(Segment):
         offset = 0
         for pv_name, extent_offset in self.stripes:
             if pv_name not in opened_pv:
-                if (pv_dev := pv[pv_name].dev) is not None:
-                    pv_fh = pv_dev.open()
-                else:
-                    raise LVM2Error(
-                        f"Physical volume not found: {pv_name} (id={pv[pv_name].id}, device={pv[pv_name].device})"
-                    )
+                pv_fh = pv[pv_name].open()
                 opened_pv[pv_name] = pv_fh
             else:
                 pv_fh = opened_pv[pv_name]

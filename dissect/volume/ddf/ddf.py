@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import io
-from typing import BinaryIO
+from typing import TYPE_CHECKING, BinaryIO
 
 from dissect.util import ts
 
@@ -10,11 +10,15 @@ from dissect.volume.exceptions import DDFError
 from dissect.volume.raid.raid import (
     RAID,
     Configuration,
-    DiskMap,
     PhysicalDisk,
     VirtualDisk,
 )
 from dissect.volume.raid.stream import Layout, Level
+
+if TYPE_CHECKING:
+    from dissect.volume.raid.raid import (
+        DiskMap,
+    )
 
 DEFAULT_SECTOR_SIZE = 512
 

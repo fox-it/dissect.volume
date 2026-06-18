@@ -46,6 +46,11 @@ def lvm_mirror() -> Iterator[list[BinaryIO]]:
 
 
 @pytest.fixture
+def lvm_inconsistent_sizes() -> Iterator[BinaryIO]:
+    yield from open_file_gz("_data/lvm/lvm-inconsistent-sizes.bin.gz")
+
+
+@pytest.fixture
 def mbr() -> Iterator[BinaryIO]:
     yield from open_file("_data/disk/mbr.bin")
 

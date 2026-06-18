@@ -6,12 +6,15 @@ import os
 import uuid
 from collections import defaultdict
 from functools import cached_property
-from typing import BinaryIO
+from typing import TYPE_CHECKING, BinaryIO
 
-from dissect.cstruct import Structure, cstruct
+from dissect.cstruct import cstruct
 from dissect.util.stream import AlignedStream
 
 from dissect.volume.exceptions import Error
+
+if TYPE_CHECKING:
+    from dissect.cstruct import Structure
 
 log = logging.getLogger(__name__)
 log.setLevel(os.getenv("DISSECT_LOG_VSS", "CRITICAL"))

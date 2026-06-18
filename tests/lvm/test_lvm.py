@@ -8,6 +8,7 @@ import pytest
 
 from dissect.volume.exceptions import LVM2Error
 from dissect.volume.lvm import LVM2
+from dissect.volume.lvm.c_lvm2 import c_lvm
 from dissect.volume.lvm.metadata import StripedSegment
 
 
@@ -82,3 +83,76 @@ def test_lvm_mirror(lvm_mirror: list[BinaryIO]) -> None:
     fh = lv.open()
     for i in range(1, 513):
         assert fh.read(4096) == i.to_bytes(2, "little") * 2048
+
+
+def test_lvm_multiple_data_areas() -> None:
+    """Test if LVM2 raises an Error if more than 1 data area descriptor is specified.
+
+    This test can be removed once lvm2 allows for multiple area descriptors
+    """
+    lvm_data = [
+        c_lvm.label_header(id=b"LABELONE", offset=len(c_lvm.label_header)),
+        c_lvm.pv_header(),
+        c_lvm.disk_locn(offset=1),
+        c_lvm.disk_locn(offset=2),
+        c_lvm.disk_locn(),
+    ]
+    data = io.BytesIO(b"".join(struct.dumps() for struct in lvm_data))
+    with pytest.raises(RuntimeError, match="There should be 1 data area descriptor, found 2"):
+        LVM2(data)
+
+
+def test_lvm_sizes_mismatch(lvm_inconsistent_sizes: BinaryIO) -> None:
+    """Test if opening the LVM2Device uses PhysicalVolume.size when LVM2Device.size < PhysicalVolume.size."""
+    lvm = LVM2(lvm_inconsistent_sizes)
+
+    lv = lvm.vg.logical_volumes["lv"]
+
+    # Size manually adjusted to be smaller than the actual data
+    # This is the offset the data of a text file starts
+    assert next(iter(lvm.devices.values())).size == 0x300000
+    physical_volume = lvm.vg.pv[0]
+    assert physical_volume.size == 0x8000000
+
+    fh = lv.open()
+    # Size of the stripe
+    assert fh.size == 0x400000
+
+    segment_stream = fh._runs[0][2]
+    pv_stream = segment_stream._runs[0][2]
+    # Check whether the underlying pv stream size is correct (The non adjusted size)
+    assert pv_stream.size == 0x8000000
+
+    fh.seek(0x3B8800)
+
+    expected_data = b"A small file at the end of the disk"
+    assert fh.read(len(expected_data)) == expected_data
+
+
+def test_lvm_sizes_mismatch_missing_dev_size(lvm_inconsistent_sizes: BinaryIO) -> None:
+    """Test if opening the LVM2Device uses the calculated disk size when PhysicalVolume.dev_size is missing."""
+    lvm = LVM2(lvm_inconsistent_sizes)
+
+    lv = lvm.vg.logical_volumes["lv"]
+
+    # Size manually adjusted to be smaller than the actual data
+    # This is the offset the data of a text file starts
+    assert next(iter(lvm.devices.values())).size == 0x300000
+    physical_volume = lvm.vg.pv[0]
+    # physical_volume.size will calculate size based on the the data offset
+    # and size of the stripes if dev_size is not defined
+    physical_volume.dev_size = None
+    assert physical_volume.size == 0x500000
+
+    fh = lv.open()
+    # Size of the stripe
+    assert fh.size == 0x400000
+
+    segment_stream = fh._runs[0][2]
+    pv_stream = segment_stream._runs[0][2]
+    assert pv_stream.size == 0x500000
+
+    fh.seek(0x3B8800)
+
+    expected_data = b"A small file at the end of the disk"
+    assert fh.read(len(expected_data)) == expected_data

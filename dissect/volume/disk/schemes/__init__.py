@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dissect.volume.disk.schemes.apm import APM
 from dissect.volume.disk.schemes.bsd import BSD
 from dissect.volume.disk.schemes.gpt import GPT
