@@ -80,6 +80,11 @@ def gpt_no_name_xff() -> Iterator[BinaryIO]:
     yield from open_file("_data/disk/gpt_no_name_xff.bin")
 
 
+@pytest.fixture(params=["fat12", "fat16", "fat32"])
+def fat(request: pytest.FixtureRequest) -> Iterator[BinaryIO]:
+    yield from open_file(f"_data/disk/{request.param}.bin")
+
+
 @pytest.fixture
 def apm() -> Iterator[BinaryIO]:
     yield from open_file("_data/disk/apm.bin")

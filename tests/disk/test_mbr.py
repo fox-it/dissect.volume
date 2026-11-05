@@ -57,8 +57,20 @@ def _fat32_boot_sector(oem_id: bytes) -> bytes:
     return _boot_sector(bytes(bpb), boot_code)
 
 
-@pytest.mark.parametrize("oem_id", [b"mkfs.fat", b"FANUC   ", b"        ", b"MSDOS5.0"])
-def test_mbr_fat_boot_sector(oem_id: bytes) -> None:
+def test_mbr_fat_boot_sector(fat: BinaryIO) -> None:
+    # The first sector of a FAT12, FAT16 and FAT32 volume made by mkfs.fat (dosfstools 4.2, with
+    # --invariant), whose OEM ID is "mkfs.fat"
+    with pytest.raises(disk.DiskError, match="VBR, not an MBR"):
+        MBR(fat)
+
+    fat.seek(0)
+    with pytest.raises(disk.DiskError, match="Unable to detect a valid partition scheme"):
+        disk.Disk(fat)
+
+
+@pytest.mark.parametrize("oem_id", [b"FANUC   ", b"        ", b"MSDOS5.0"])
+def test_mbr_fat_boot_sector_oem_id(oem_id: bytes) -> None:
+    # Boot code that reads as partition entries, as some vendor tools write it, whatever the OEM ID
     buf = io.BytesIO(_fat32_boot_sector(oem_id) + bytes(512))
     with pytest.raises(disk.DiskError, match="VBR, not an MBR"):
         MBR(buf)
