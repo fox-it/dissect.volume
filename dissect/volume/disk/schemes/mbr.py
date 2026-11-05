@@ -29,23 +29,6 @@ typedef struct mbr_s {
     part    part[4];
     uint16  bootsig;
 } mbr;
-
-typedef struct fat_bpb_s {
-    uint8   jump[3];                // +0: jump to the boot code
-    char    oem_id[8];              // +3: OEM ID
-    uint16  bytes_per_sector;       // +11: bytes per sector
-    uint8   sectors_per_cluster;    // +13: sectors per cluster
-    uint16  reserved_sectors;       // +14: reserved sectors
-    uint8   fat_count;              // +16: number of FATs
-    uint16  root_entries;           // +17: root directory entries (0 for FAT32)
-    uint16  total_sectors_16;       // +19: total sectors (0 if it does not fit)
-    uint8   media;                  // +21: media descriptor
-    uint16  fat_size_16;            // +22: sectors per FAT (0 for FAT32)
-    uint16  sectors_per_track;      // +24: sectors per track
-    uint16  heads;                  // +26: number of heads
-    uint32  hidden_sectors;         // +28: sectors before the volume
-    uint32  total_sectors_32;       // +32: total sectors
-} fat_bpb;
 """
 
 c_mbr = cstruct().load(mbr_def)
@@ -114,18 +97,15 @@ def _is_fat_boot_sector(sector: bytes) -> bool:
 
     A FAT volume without a partition table starts with a boot sector that has the same boot signature as an MBR,
     and its boot code takes up the space of the MBR partition table. Its OEM ID can be anything, such as
-    ``mkfs.fat`` or a vendor's own, so check its BIOS parameter block instead, with the rules ``dissect.fat`` uses
-    to accept a FAT boot sector.
+    ``mkfs.fat`` or a vendor's own, so check the single-byte fields of its BIOS parameter block instead.
     """
-    bpb = c_mbr.fat_bpb(sector)
     return (
-        # A jump to the boot code: EB xx 90 or E9 xx xx
-        ((bpb.jump[0] == 0xEB and bpb.jump[2] == 0x90) or bpb.jump[0] == 0xE9)
-        and bpb.bytes_per_sector in (512, 1024, 2048, 4096)
-        and bpb.sectors_per_cluster in (1, 2, 4, 8, 16, 32, 64, 128)
-        and bpb.reserved_sectors != 0
-        and bpb.fat_count != 0
-        and bpb.media in (0xF0, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF)
-        and (bpb.root_entries * 32) % bpb.bytes_per_sector == 0
-        and (bpb.total_sectors_16 != 0 or bpb.total_sectors_32 != 0)
+        # Jump (+0): a jump to the boot code, EB xx 90 or E9 xx xx
+        ((sector[0] == 0xEB and sector[2] == 0x90) or sector[0] == 0xE9)
+        # SectorsPerCluster (+13): a power of two
+        and sector[13] in (1, 2, 4, 8, 16, 32, 64, 128)
+        # Fats (+16): the number of FATs
+        and sector[16] != 0
+        # Media (+21): the media descriptor
+        and sector[21] in (0xF0, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF)
     )
