@@ -97,7 +97,10 @@ def _is_fat_boot_sector(sector: bytes) -> bool:
 
     A FAT volume without a partition table starts with a boot sector that has the same boot signature as an MBR,
     and its boot code takes up the space of the MBR partition table. Its OEM ID can be anything, such as
-    ``mkfs.fat`` or a vendor's own, so check the single-byte fields of its BIOS parameter block instead.
+    ``mkfs.fat`` or a vendor's own.
+
+    To keep this check cheap, only check the single-byte fields of its BIOS parameter block. This should be
+    accurate enough for the purposes of this check.
     """
     return (
         # Jump (+0): a jump to the boot code, EB xx 90 or E9 xx xx
