@@ -110,27 +110,7 @@ class _c_md(__cs__.cstruct):
         root_pv: _c_md.uint32
         root_block: _c_md.uint32
         pstate_reserved: __cs__.Array[_c_md.uint32]
-        class mdp_device_descriptor_s(__cs__.Structure):
-            number: _c_md.uint32
-            major: _c_md.uint32
-            minor: _c_md.uint32
-            raid_disk: _c_md.uint32
-            state: _c_md.uint32
-            reserved: __cs__.Array[_c_md.uint32]
-            @overload
-            def __init__(
-                self,
-                number: _c_md.uint32 | None = ...,
-                major: _c_md.uint32 | None = ...,
-                minor: _c_md.uint32 | None = ...,
-                raid_disk: _c_md.uint32 | None = ...,
-                state: _c_md.uint32 | None = ...,
-                reserved: __cs__.Array[_c_md.uint32] | None = ...,
-            ): ...
-            @overload
-            def __init__(self, fh: bytes | memoryview | bytearray | BinaryIO, /): ...
-
-        disks: __cs__.Array[mdp_device_descriptor_s]
+        disks: __cs__.Array[_c_md.mdp_device_descriptor_s]
         reserved: __cs__.Array[_c_md.uint32]
         this_disk: _c_md.mdp_device_descriptor_s
         @overload
@@ -176,7 +156,7 @@ class _c_md(__cs__.cstruct):
             root_pv: _c_md.uint32 | None = ...,
             root_block: _c_md.uint32 | None = ...,
             pstate_reserved: __cs__.Array[_c_md.uint32] | None = ...,
-            disks: __cs__.Array[mdp_device_descriptor_s] | None = ...,
+            disks: __cs__.Array[_c_md.mdp_device_descriptor_s] | None = ...,
             reserved: __cs__.Array[_c_md.uint32] | None = ...,
             this_disk: _c_md.mdp_device_descriptor_s | None = ...,
         ): ...

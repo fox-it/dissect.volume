@@ -412,21 +412,7 @@ class _c_ddf(__cs__.cstruct):
         Populated_SAEs: _c_ddf.uint16
         Max_SAE_Supported: _c_ddf.uint16
         Reserved2: __cs__.CharArray
-        class Spare_Assignment_Entry(__cs__.Structure):
-            VD_GUID: __cs__.CharArray
-            Secondary_Element: _c_ddf.uint16
-            Reserved: __cs__.CharArray
-            @overload
-            def __init__(
-                self,
-                VD_GUID: __cs__.CharArray | None = ...,
-                Secondary_Element: _c_ddf.uint16 | None = ...,
-                Reserved: __cs__.CharArray | None = ...,
-            ): ...
-            @overload
-            def __init__(self, fh: bytes | memoryview | bytearray | BinaryIO, /): ...
-
-        Spare_Assignment_Entries: __cs__.Array[Spare_Assignment_Entry]
+        Spare_Assignment_Entries: __cs__.Array[_c_ddf.Spare_Assignment_Entry]
         @overload
         def __init__(
             self,
@@ -438,7 +424,7 @@ class _c_ddf(__cs__.cstruct):
             Populated_SAEs: _c_ddf.uint16 | None = ...,
             Max_SAE_Supported: _c_ddf.uint16 | None = ...,
             Reserved2: __cs__.CharArray | None = ...,
-            Spare_Assignment_Entries: __cs__.Array[Spare_Assignment_Entry] | None = ...,
+            Spare_Assignment_Entries: __cs__.Array[_c_ddf.Spare_Assignment_Entry] | None = ...,
         ): ...
         @overload
         def __init__(self, fh: bytes | memoryview | bytearray | BinaryIO, /): ...
@@ -490,23 +476,7 @@ class _c_ddf(__cs__.cstruct):
         Reserved_Spare_Block_Count: _c_ddf.uint32
         Reserved: __cs__.CharArray
         First_Spare_LBA: _c_ddf.uint64
-        class Mapped_Block_Entry(__cs__.Structure):
-            Defective_Block_Start: _c_ddf.uint64
-            Spare_Block_Offset: _c_ddf.uint32
-            Remapped_Marked_Count: _c_ddf.uint16
-            Reserved: __cs__.CharArray
-            @overload
-            def __init__(
-                self,
-                Defective_Block_Start: _c_ddf.uint64 | None = ...,
-                Spare_Block_Offset: _c_ddf.uint32 | None = ...,
-                Remapped_Marked_Count: _c_ddf.uint16 | None = ...,
-                Reserved: __cs__.CharArray | None = ...,
-            ): ...
-            @overload
-            def __init__(self, fh: bytes | memoryview | bytearray | BinaryIO, /): ...
-
-        Mapped_Block_Entries: __cs__.Array[Mapped_Block_Entry]
+        Mapped_Block_Entries: __cs__.Array[_c_ddf.Mapped_Block_Entry]
         @overload
         def __init__(
             self,
@@ -516,7 +486,7 @@ class _c_ddf(__cs__.cstruct):
             Reserved_Spare_Block_Count: _c_ddf.uint32 | None = ...,
             Reserved: __cs__.CharArray | None = ...,
             First_Spare_LBA: _c_ddf.uint64 | None = ...,
-            Mapped_Block_Entries: __cs__.Array[Mapped_Block_Entry] | None = ...,
+            Mapped_Block_Entries: __cs__.Array[_c_ddf.Mapped_Block_Entry] | None = ...,
         ): ...
         @overload
         def __init__(self, fh: bytes | memoryview | bytearray | BinaryIO, /): ...

@@ -69,7 +69,7 @@ struct gv_label {
 #define GV_NOMAGIC          0x56494E554D2D2D00LL
 
 /* The 'header' of each valid vinum drive. */
-struct gv_hdr {
+typedef struct gv_hdr {
     uint64_t        magic;
     uint64_t        config_length;
     struct gv_label label;
