@@ -51,6 +51,9 @@ class MBR:
         if any(v in sig for v in [b"MSDOS", b"MSWIN", b"NTFS", b"FAT", b"EXFAT", b"-FVE-FS-", b"SYSLINUX"]):
             raise DiskError("Sector is a filesystem VBR, not an MBR")
 
+        if _is_fat_boot_sector(self.mbr.bootcode):
+            raise DiskError("Sector is a FAT filesystem VBR, not an MBR")
+
         if self.mbr.bootcode[18:38] == b"Hit Esc for .altboot" or self.mbr.bootcode[168:174] == b"\r\nQNX ":
             raise DiskError("Sector is a QNX Boot Sector, not an MBR")
 
@@ -87,3 +90,25 @@ class MBR:
                 flags=partition.bootable,
                 raw=partition,
             )
+
+
+def _is_fat_boot_sector(sector: bytes) -> bool:
+    """Return whether ``sector`` starts with a FAT boot sector, whatever its OEM ID.
+
+    A FAT volume without a partition table starts with a boot sector that has the same boot signature as an MBR,
+    and its boot code takes up the space of the MBR partition table. Its OEM ID can be anything, such as
+    ``mkfs.fat`` or a vendor's own.
+
+    To keep this check cheap, only check the single-byte fields of its BIOS parameter block. This should be
+    accurate enough for the purposes of this check.
+    """
+    return (
+        # Jump (+0): a jump to the boot code, EB xx 90 or E9 xx xx
+        ((sector[0] == 0xEB and sector[2] == 0x90) or sector[0] == 0xE9)
+        # SectorsPerCluster (+13): a power of two
+        and sector[13] in (1, 2, 4, 8, 16, 32, 64, 128)
+        # Fats (+16): the number of FATs
+        and sector[16] != 0
+        # Media (+21): the media descriptor
+        and sector[21] in (0xF0, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF)
+    )
